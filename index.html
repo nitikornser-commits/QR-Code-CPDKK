@@ -1,1059 +1,1239 @@
 <!DOCTYPE html>
 <html lang="th">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Code Generator Pro</title>
-    <!-- [ข้อ 4] โหลด Tailwind แบบ async ไม่บล็อก render -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=K2D:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        :root { 
-            --theme-color-1: #10b981; 
-            --theme-color-2: #059669; 
-            --theme-color-1-rgb: 16, 185, 129; 
-            --theme-color-2-rgb: 5, 150, 105; 
-        }
-        
-        body { font-family: 'K2D', sans-serif; background-color: #fdfbfb; background-image: radial-gradient(at 0% 0%, rgba(var(--theme-color-1-rgb), 0.1) 0px, transparent 50%), radial-gradient(at 100% 0%, rgba(var(--theme-color-2-rgb), 0.1) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(var(--theme-color-1-rgb), 0.1) 0px, transparent 50%), radial-gradient(at 0% 100%, rgba(var(--theme-color-1-rgb), 0.1) 0px, transparent 50%); background-attachment: fixed; color: #334155; }
-        .glass-card { background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.8); box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.05); }
-        .theme-gradient { background: linear-gradient(135deg, var(--theme-color-1), var(--theme-color-2)); }
-        .theme-text { background: linear-gradient(135deg, var(--theme-color-1), var(--theme-color-2)); background-size: 200% auto; background-clip: text; -webkit-background-clip: text; color: transparent; -webkit-text-fill-color: transparent; animation: shine 4s linear infinite; }
-        .theme-border { border-color: var(--theme-color-1); }
-        .theme-bg-soft { background-color: color-mix(in srgb, var(--theme-color-1) 15%, white); }
-        .theme-text-solid { color: var(--theme-color-1); }
-        @keyframes shine { to { background-position: 200% center; } }
-        .btn-magic { background: linear-gradient(135deg, var(--theme-color-1), var(--theme-color-2)); transition: all 0.3s ease; }
-        .btn-magic:hover { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 8px 25px -5px color-mix(in srgb, var(--theme-color-2) 40%, transparent); }
-        input[type="file"] { display: none; }
-        input[type="text"], input[type="url"], input[type="tel"], input[type="email"], input[type="number"], textarea, select { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); }
-        .tab-content { display: none; opacity: 0; transition: opacity 0.3s; }
-        .tab-content.active { display: flex; opacity: 1; }
-        #section-stats.active, #section-settings.active { display: block; opacity: 1; }
-        /* [ข้อ 3] QR preview wrapper ให้พอดีกับพื้นที่ฝั่งขวา */
-        #qr-code-wrapper svg, #qr-code-wrapper canvas { width: 100% !important; height: 100% !important; object-fit: contain; }
-        .spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 3px solid white; width: 16px; height: 16px; animation: spin 1s linear infinite; display: inline-block; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบจองห้องประชุม - สหกรณ์จังหวัดขอนแก่น</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+  
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script>
 
-        /* [ข้อ 2] ส่วนแสดงผล Page View Counter */
-        .visitor-counter { background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(5,150,105,0.12)); border: 1px solid rgba(16,185,129,0.2); }
-        .visitor-counter .count-num { font-feature-settings: "tnum"; font-variant-numeric: tabular-nums; }
-
-        @media (max-width: 768px) {
-            .mobile-cards thead { display: none; }
-            .mobile-cards tbody tr { display: flex; flex-direction: column; border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 1rem; background: white; padding: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-            .mobile-cards tbody td { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border: none !important; }
-            .mobile-cards tbody td::before { content: attr(data-label); font-weight: 600; color: #6b7280; font-size: 0.8rem; margin-right: 1rem; }
-            .mobile-cards tbody td:last-child { margin-top: 0.5rem; justify-content: center; gap: 0.5rem; flex-wrap: wrap; }
-            .mobile-cards tbody td:last-child::before { display: none; }
-        }
-    </style>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Sarabun', sans-serif; }
+    .fc-header-toolbar { padding: 0.5rem; flex-wrap: wrap; gap: 0.5rem; }
+    .fc-button-primary { background-color: #059669 !important; border-color: #059669 !important; }
+    .fc-button-primary:hover { background-color: #047857 !important; border-color: #047857 !important; }
+    .fc-button-active { background-color: #065f46 !important; border-color: #065f46 !important; }
+    
+    @media print {
+      body * { visibility: hidden; }
+      #reportPrintArea, #reportPrintArea * { visibility: visible; }
+      #reportPrintArea { position: absolute; left: 0; top: 0; width: 100%; }
+      .no-print { display: none !important; }
+    }
+  </style>
 </head>
+<body class="bg-gray-50 min-h-screen text-gray-800">
 
-<body class="antialiased min-h-screen flex flex-col">
-    <nav class="glass-card sticky top-0 z-30 border-b border-white/40">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6">
-            <div class="flex flex-col sm:flex-row justify-between h-auto sm:h-16 py-2 sm:py-0 items-center gap-2 w-full">
-                
-                <div class="flex justify-between items-center w-full sm:w-auto">
-                    <div class="flex items-center gap-2">
-                        <img src="https://img2.pic.in.th/393a2076f179a3823.png" alt="Logo CPDKK" class="h-8 w-auto object-contain" onerror="this.style.display='none'">
-                        <span class="font-bold text-lg sm:text-xl tracking-tight theme-text">QR Code CPDKK</span>
-                    </div>
-                    <button id="auth-btn" onclick="handleAuth()" class="sm:hidden px-3 py-1.5 bg-white text-emerald-600 rounded-lg font-bold text-xs border border-gray-200 shadow-sm transition-all">เข้าสู่ระบบ</button>
-                </div>
+  <div id="loginGate" class="fixed inset-0 bg-emerald-50 flex items-center justify-center z-[100]">
+    <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-sm text-center border-t-4 border-emerald-600">
+      <div class="mb-5 flex items-center justify-center">
+         <? if (logoUrl) { ?>
+           <img src="<?= logoUrl ?>" alt="โลโก้สำนักงาน" class="w-auto h-24 max-w-full mx-auto object-contain">
+         <? } else { ?>
+           <div class="bg-emerald-100 rounded-full w-20 h-20 flex items-center justify-center text-3xl mx-auto">🏢</div>
+         <? } ?>
+      </div>
+      <h2 class="text-2xl font-bold text-emerald-700 mb-2">ระบบจองห้องประชุม</h2>
+      <p class="text-gray-500 mb-6 text-xl">สำนักงานสหกรณ์จังหวัดขอนแก่น</p>
+      
+      <form onsubmit="event.preventDefault(); checkSecureLogin();">
+        <input type="password" id="systemPassword" class="w-full px-4 py-3 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-center text-lg tracking-widest" placeholder="รหัสผ่านระบบ" required>
+        <button type="submit" id="loginBtn" class="w-full bg-emerald-600 text-white py-3 rounded-md hover:bg-emerald-700 transition font-medium text-lg shadow-md">เข้าสู่ระบบ</button>
+      </form>
+    </div>
+  </div>
 
-                <div class="flex bg-white/50 p-1 rounded-xl border border-white shadow-sm text-xs sm:text-sm overflow-x-auto w-full sm:w-auto justify-center mx-auto sm:mx-0">
-                    <button onclick="switchTab('create')" id="nav-create" class="nav-btn px-4 py-1.5 font-semibold text-white theme-gradient rounded-lg shadow-md transition-all whitespace-nowrap flex items-center gap-2">
-                        <div class="w-5 h-5 rounded flex items-center justify-center bg-white/20 border border-white/40 flex-shrink-0">
-                            <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
-                        </div>
-                        สร้าง QR Code ฟรี ไม่มีโฆษณา
-                    </button>
-                    <button onclick="switchTab('stats')" id="nav-stats" class="nav-btn px-4 py-1.5 font-medium text-gray-600 hover:text-gray-900 rounded-lg transition-all whitespace-nowrap" style="display: none;">ประวัติ</button>
-                    <button onclick="switchTab('settings')" id="nav-settings" class="nav-btn px-4 py-1.5 font-medium text-gray-600 hover:text-gray-900 rounded-lg transition-all flex items-center gap-1 whitespace-nowrap" style="display: none;">
-                        <svg class="w-4 h-4 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                        ตั้งค่า
-                    </button>
-                </div>
-
-                <button id="auth-btn-desktop" onclick="handleAuth()" class="hidden sm:flex px-4 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg font-bold text-sm border border-emerald-100 hover:bg-emerald-100 shadow-sm transition-all items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg>
-                    <span>เข้าสู่ระบบ</span>
-                </button>
-            </div>
+  <div id="mainApp" class="hidden flex flex-col min-h-screen">
+    
+    <nav class="bg-emerald-600 text-white shadow-md px-6 py-3 flex flex-wrap justify-between items-center no-print">
+      <div class="flex items-center gap-3">
+        <? if (logoUrl) { ?>
+           <img src="<?= logoUrl ?>" alt="โลโก้" class="w-auto h-12 max-w-full object-contain bg-white bg-opacity-10 p-0.5 rounded">
+        <? } ?>
+        <div>
+          <h1 class="text-xl font-bold tracking-wide">ระบบจองห้องประชุม</h1>
+          <p class="text-xs text-emerald-100">สำนักงานสหกรณ์จังหวัดขอนแก่น</p>
         </div>
+      </div>
+      <div class="flex items-center space-x-3 mt-2 sm:mt-0">
+        <span id="adminBadge" class="hidden bg-amber-400 text-amber-950 text-xs px-3 py-1.5 rounded-full font-bold shadow-sm">🔑 ผู้ดูแลระบบ</span>
+        <span id="userBadge" class="hidden bg-gray-100 text-gray-700 text-xs px-3 py-1.5 rounded-full font-bold shadow-sm">👤 ผู้ใช้งานทั่วไป</span>
+        <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white text-sm px-4 py-2 rounded-lg font-bold transition shadow-sm">ออกจากระบบ</button>
+      </div>
     </nav>
 
-    <div class="max-w-7xl mx-auto p-4 sm:p-5 flex-1 w-full relative z-10">
-        <div id="section-create" class="tab-content flex-col lg:flex-row gap-4 active">
-            
-            <div class="flex-1 lg:w-2/3 flex flex-col gap-4">
-                <div class="glass-card rounded-2xl p-4 sm:p-5 relative overflow-hidden">
-                    <h2 class="text-base sm:text-lg font-bold mb-3 flex items-center gap-2 relative z-10">
-                        <span class="theme-gradient text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-lg">1</span>
-                        เลือกประเภทข้อมูล
-                    </h2>
-                    
-                    <div class="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-4 relative z-10">
-                        <button onclick="setDataType('url')" id="type-url" class="type-btn active flex flex-col items-center justify-center p-2 rounded-xl border-2 theme-border theme-bg-soft theme-text-solid shadow-sm transition-all">
-                            <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-                            <span class="text-[10px] sm:text-xs font-semibold">เว็บไซต์</span>
-                        </button>
-                        <button onclick="setDataType('text')" id="type-text" class="type-btn flex flex-col items-center justify-center p-2 rounded-xl border-2 border-transparent bg-white/60 text-gray-500 hover:bg-white transition-all">
-                            <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path></svg>
-                            <span class="text-[10px] sm:text-xs font-medium">ข้อความ</span>
-                        </button>
-                        <button onclick="setDataType('wifi')" id="type-wifi" class="type-btn flex flex-col items-center justify-center p-2 rounded-xl border-2 border-transparent bg-white/60 text-gray-500 hover:bg-white transition-all">
-                            <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"></path></svg>
-                            <span class="text-[10px] sm:text-xs font-medium">WiFi</span>
-                        </button>
-                        <button onclick="setDataType('phone')" id="type-phone" class="type-btn flex flex-col items-center justify-center p-2 rounded-xl border-2 border-transparent bg-white/60 text-gray-500 hover:bg-white transition-all">
-                            <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
-                            <span class="text-[10px] sm:text-xs font-medium">เบอร์โทร</span>
-                        </button>
-                        <button onclick="setDataType('email')" id="type-email" class="type-btn flex flex-col items-center justify-center p-2 rounded-xl border-2 border-transparent bg-white/60 text-gray-500 hover:bg-white transition-all">
-                            <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-                            <span class="text-[10px] sm:text-xs font-medium">อีเมล</span>
-                        </button>
-                        <button onclick="setDataType('promptpay')" id="type-promptpay" class="type-btn flex flex-col items-center justify-center p-2 rounded-xl border-2 border-transparent bg-white/60 text-gray-500 hover:bg-white transition-all">
-                            <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            <span class="text-[10px] sm:text-xs font-medium">พร้อมเพย์</span>
-                        </button>
-                    </div>
-
-                    <div id="input-container" class="space-y-3 relative z-10">
-                        <div id="input-url" class="input-group block">
-                            <label class="block text-xs font-semibold text-gray-700 mb-1.5">ลิงก์ URL ปลายทาง</label>
-                            <input type="url" id="data-url" placeholder="https://khonkaen.web.cpd.go.th/" oninput="updateQR()" class="w-full px-4 py-2 sm:py-2.5 rounded-xl border-0 ring-1 ring-gray-200 focus:ring-2 outline-none transition-all text-sm">
-                        </div>
-                        <div id="input-text" class="input-group hidden">
-                            <label class="block text-xs font-semibold text-gray-700 mb-1.5">ข้อความ (รองรับภาษาไทย)</label>
-                            <textarea id="data-text" rows="2" placeholder="พิมพ์ข้อความที่ต้องการ..." oninput="updateQR()" class="w-full px-4 py-2 sm:py-2.5 rounded-xl border-0 ring-1 ring-gray-200 focus:ring-2 outline-none transition-all resize-none text-sm"></textarea>
-                        </div>
-                        <div id="input-wifi" class="input-group hidden space-y-3">
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">ชื่อ WiFi (SSID)</label>
-                                    <input type="text" id="wifi-ssid" placeholder="ชื่อ WiFi" oninput="updateQR()" class="w-full px-4 py-2 sm:py-2.5 rounded-xl border-0 ring-1 ring-gray-200 outline-none text-sm">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">รหัสผ่าน</label>
-                                    <input type="text" id="wifi-pass" placeholder="รหัสผ่าน" oninput="updateQR()" class="w-full px-4 py-2 sm:py-2.5 rounded-xl border-0 ring-1 ring-gray-200 outline-none text-sm">
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-700 mb-1.5">ความปลอดภัย</label>
-                                <select id="wifi-type" onchange="updateQR()" class="w-full px-4 py-2 sm:py-2.5 rounded-xl border-0 ring-1 ring-gray-200 outline-none appearance-none font-medium text-sm">
-                                    <option value="WPA">WPA/WPA2/WPA3</option>
-                                    <option value="WEP">WEP</option>
-                                    <option value="nopass">ไม่มีรหัสผ่าน</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div id="input-phone" class="input-group hidden">
-                            <label class="block text-xs font-semibold text-gray-700 mb-1.5">เบอร์โทรศัพท์ติดต่อ</label>
-                            <input type="tel" id="data-phone" placeholder="081-xxx-xxxx" oninput="updateQR()" class="w-full px-4 py-2 sm:py-2.5 rounded-xl border-0 ring-1 ring-gray-200 focus:ring-2 outline-none transition-all text-sm">
-                        </div>
-                        <div id="input-email" class="input-group hidden space-y-3">
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">อีเมลผู้รับ</label>
-                                    <input type="email" id="email-to" placeholder="hello@company.com" oninput="updateQR()" class="w-full px-4 py-2 sm:py-2.5 rounded-xl border-0 ring-1 ring-gray-200 outline-none text-sm">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">หัวข้อ (Subject)</label>
-                                    <input type="text" id="email-sub" placeholder="ติดต่องาน" oninput="updateQR()" class="w-full px-4 py-2 sm:py-2.5 rounded-xl border-0 ring-1 ring-gray-200 outline-none text-sm">
-                                </div>
-                            </div>
-                        </div>
-                        <div id="input-promptpay" class="input-group hidden space-y-3">
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">เบอร์โทร / เลขบัตรประชาชน</label>
-                                    <input type="text" id="promptpay-id" placeholder="0812345678" oninput="updateQR()" class="w-full px-4 py-2 sm:py-2.5 rounded-xl border-0 ring-1 ring-gray-200 outline-none text-sm">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">จำนวนเงิน (บาท)</label>
-                                    <input type="number" id="promptpay-amount" placeholder="0.00" oninput="updateQR()" step="0.01" min="0" class="w-full px-4 py-2 sm:py-2.5 rounded-xl border-0 ring-1 ring-gray-200 outline-none text-sm">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="glass-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
-                        <div>
-                            <h2 class="text-base sm:text-lg font-bold mb-3 flex items-center gap-2">
-                                <span class="theme-gradient text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-lg">2</span>
-                                สีสันและสไตล์
-                            </h2>
-                            <div class="flex flex-col gap-3">
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div class="flex items-center justify-between p-2 rounded-xl bg-white/50 border border-white">
-                                        <label class="text-[10px] font-semibold text-gray-500 uppercase">สี QR</label>
-                                        <input type="color" id="qrColorDark" value="#000000" onchange="updateQR()" class="w-7 h-7 rounded-full cursor-pointer border border-white ring-1 ring-gray-200">
-                                    </div>
-                                    <div class="flex items-center justify-between p-2 rounded-xl bg-white/50 border border-white">
-                                        <label class="text-[10px] font-semibold text-gray-500 uppercase">สีพื้นหลัง</label>
-                                        <input type="color" id="qrColorLight" value="#ffffff" onchange="updateQR()" class="w-7 h-7 rounded-full cursor-pointer border border-white ring-1 ring-gray-200">
-                                    </div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <select id="dotsType" onchange="updateQR()" class="w-full text-xs px-3 py-2.5 rounded-xl border-0 ring-1 ring-gray-200 bg-white/80 outline-none appearance-none font-medium">
-                                            <option value="rounded">เหลี่ยมมน</option>
-                                            <option value="dots">จุดกลม</option>
-                                            <option value="extra-rounded">โค้งมาก</option>
-                                            <option value="square">มาตรฐาน</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <select id="cornersType" onchange="updateQR()" class="w-full text-xs px-3 py-2.5 rounded-xl border-0 ring-1 ring-gray-200 bg-white/80 outline-none appearance-none font-medium">
-                                            <option value="extra-rounded">โค้งมนมาก</option>
-                                            <option value="dot">ทรงกลม</option>
-                                            <option value="square">เหลี่ยม</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="glass-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
-                        <div>
-                            <h2 class="text-base sm:text-lg font-bold mb-3 flex items-center gap-2">
-                                <span class="theme-gradient text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-lg">3</span>
-                                โลโก้แบรนด์
-                            </h2>
-                            <div class="flex flex-col gap-3">
-                                
-                                <div id="preset-logos-section" class="flex flex-col gap-1.5">
-                                    <span class="text-xs font-semibold text-gray-500">เลือกโลโก้ที่ใช้บ่อย:</span>
-                                    <div id="preset-logos-container" class="flex flex-wrap gap-2 min-h-[3rem] items-center">
-                                        <div id="preset-logos-loading" class="flex items-center gap-1.5">
-                                            <span class="spinner border-t-emerald-500 w-4 h-4 border-[2px]"></span>
-                                            <span class="text-[10px] text-gray-400">กำลังโหลด...</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <label for="logoInput" class="cursor-pointer bg-white text-gray-700 px-4 py-2.5 rounded-xl font-semibold shadow-sm hover:shadow transition-all text-xs flex items-center justify-center gap-2 border border-gray-100">
-                                    <svg class="w-4 h-4 theme-text-solid" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                    อัปโหลดโลโก้ด้วยตนเอง
-                                </label>
-                                <input type="file" id="logoInput" accept="image/*" onchange="handleLogoUpload(event)">
-                                <button onclick="removeLogo()" id="removeLogoBtn" class="hidden px-4 py-2 text-xs font-medium text-red-500 hover:bg-red-50 rounded-lg transition-all border border-red-100">ลบโลโก้ออก</button>
-                                
-                                <div id="logo-size-container" class="hidden w-full bg-white/50 p-3 rounded-xl border border-white mt-1">
-                                    <label class="flex justify-between text-xs font-semibold text-gray-700 mb-2">
-                                        <span>ปรับขนาดโลโก้</span>
-                                        <span id="logo-size-label" class="theme-text-solid font-bold">40%</span>
-                                    </label>
-                                    <input type="range" id="logoSize" min="0.1" max="0.6" step="0.05" value="0.4" oninput="updateLogoSizeLabel(); updateQR()" class="w-full cursor-pointer h-1.5 bg-gray-200 rounded-lg appearance-none">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <section class="lg:col-span-1 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 self-start no-print">
+        <h2 class="text-lg font-bold text-gray-900 border-b pb-3 mb-4 text-emerald-600">📝 กรอกข้อมูลการจอง</h2>
+        <form id="bookingForm" onsubmit="handleFormSubmit(event)" class="space-y-4">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">ชื่อ-นามสกุล ผู้จอง <span class="text-red-500">*</span></label>
+            <input type="text" id="name" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">อีเมล (E-mail) <span class="text-red-500">*</span></label>
+            <input type="email" id="email" required placeholder="example@mail.com" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">กลุ่มงาน <span class="text-red-500">*</span></label>
+            <select id="department" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
+              <option value="" disabled selected>-- เลือกกลุ่มงาน --</option>
+              <option value="ฝ่ายบริหารทั่วไป">ฝ่ายบริหารทั่วไป</option>
+              <option value="กลุ่มจัดตั้งและส่งเสริมสหกรณ์">กลุ่มจัดตั้งและส่งเสริมสหกรณ์</option>
+              <option value="กลุ่มส่งเสริมและพัฒนาการบริหารการจัดการสหกรณ์">กลุ่มส่งเสริมและพัฒนาการบริหารการจัดการสหกรณ์</option>
+              <option value="กลุ่มส่งเสริมและพัฒนาธุรกิจสหกรณ์">กลุ่มส่งเสริมและพัฒนาธุรกิจสหกรณ์</option>
+              <option value="กลุ่มตรวจการสหกรณ์">กลุ่มตรวจการสหกรณ์</option>
+              <option value="กลุ่มส่งเสริมสหกรณ์ 1">กลุ่มส่งเสริมสหกรณ์ 1</option>
+              <option value="กลุ่มส่งเสริมสหกรณ์ 2">กลุ่มส่งเสริมสหกรณ์ 2</option>
+              <option value="กลุ่มส่งเสริมสหกรณ์ 3">กลุ่มส่งเสริมสหกรณ์ 3</option>
+              <option value="กลุ่มส่งเสริมสหกรณ์ 4">กลุ่มส่งเสริมสหกรณ์ 4</option>
+              <option value="กลุ่มส่งเสริมสหกรณ์ 5">กลุ่มส่งเสริมสหกรณ์ 5</option>
+              <option value="กลุ่มส่งเสริมสหกรณ์ 6">กลุ่มส่งเสริมสหกรณ์ 6</option>
+              <option value="กลุ่มส่งเสริมสหกรณ์ 7">กลุ่มส่งเสริมสหกรณ์ 7</option>
+              <option value="กลุ่มส่งเสริมสหกรณ์ 8">กลุ่มส่งเสริมสหกรณ์ 8</option>
+              <option value="นิคมสหกรณ์ดงมูล">นิคมสหกรณ์ดงมูล</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">ห้องประชุม <span class="text-red-500">*</span></label>
+            <select id="room" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
+              <option value="" disabled selected>เลือกห้องประชุม</option>
+              <option value="ห้องประชุมเกลียวเชือก (รองรับ 33 ที่นั่ง)">ห้องประชุมเกลียวเชือก (รองรับ 33 ที่นั่ง)</option>
+              <option value="ห้องประชุมสายรุ้ง (รองรับ 9 ที่นั่ง)">ห้องประชุมสายรุ้ง (รองรับ 9 ที่นั่ง)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">วันที่ต้องการจอง <span class="text-red-500">*</span></label>
+            <input type="text" id="date" placeholder="เลือกวันที่จอง..." required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white cursor-pointer">
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">เวลาเริ่ม <span class="text-red-500">*</span></label>
+              <input type="time" id="startTime" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
             </div>
-
-            <!-- QR Preview Panel -->
-            <div class="lg:w-1/4">
-                <div class="sticky top-20 glass-card rounded-2xl p-3 sm:p-4 flex flex-col items-center shadow-xl border-white">
-                    <div class="w-full border-b border-gray-100 pb-2 mb-3">
-                        <h2 class="text-sm font-bold text-gray-800 text-center">พรีวิว QR Code</h2>
-                    </div>
-                    <!-- [ข้อ 3] ลด padding และกำหนดขนาด max-w ให้พอดีกับพื้นที่ -->
-                    <div id="canvas-container" class="bg-white p-2 sm:p-3 rounded-xl shadow-inner border border-gray-100 mb-3 w-full max-w-[220px] sm:max-w-[240px] lg:max-w-full aspect-square relative flex items-center justify-center transition-all hover:scale-[1.02] duration-300">
-                        <div id="qr-empty-state" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
-                            <svg class="w-8 h-8 mb-1 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
-                            <span class="text-[10px] font-medium">รอการกรอกข้อมูล...</span>
-                        </div>
-                        <div id="qr-code-wrapper" class="relative z-10 w-full h-full flex justify-center items-center"></div>
-                    </div>
-                    
-                    <div class="w-full space-y-2">
-                        <div class="w-full bg-white/60 p-2.5 rounded-xl border border-gray-100">
-                            <label class="block text-[10px] font-semibold text-gray-500 uppercase mb-1.5">ขนาดไฟล์ที่ดาวน์โหลด</label>
-                            <div class="grid grid-cols-5 gap-1" id="qr-size-selector">
-                                <button onclick="setQRSize(300)"  data-size="300"  class="qr-size-btn text-[10px] font-bold py-1.5 px-1 rounded-lg border-2 border-transparent bg-gray-100 text-gray-500 hover:bg-white hover:border-gray-300 transition-all">300px</button>
-                                <button onclick="setQRSize(500)"  data-size="500"  class="qr-size-btn text-[10px] font-bold py-1.5 px-1 rounded-lg border-2 border-transparent bg-gray-100 text-gray-500 hover:bg-white hover:border-gray-300 transition-all active-size theme-border theme-bg-soft theme-text-solid">500px</button>
-                                <button onclick="setQRSize(1000)" data-size="1000" class="qr-size-btn text-[10px] font-bold py-1.5 px-1 rounded-lg border-2 border-transparent bg-gray-100 text-gray-500 hover:bg-white hover:border-gray-300 transition-all">1000px</button>
-                                <button onclick="setQRSize(1500)" data-size="1500" class="qr-size-btn text-[10px] font-bold py-1.5 px-1 rounded-lg border-2 border-transparent bg-gray-100 text-gray-500 hover:bg-white hover:border-gray-300 transition-all">1500px</button>
-                                <button onclick="setQRSize(2000)" data-size="2000" class="qr-size-btn text-[10px] font-bold py-1.5 px-1 rounded-lg border-2 border-transparent bg-gray-100 text-gray-500 hover:bg-white hover:border-gray-300 transition-all">2000px</button>
-                            </div>
-                        </div>
-
-                        <button onclick="generateAndDownloadQR('png')" class="w-full btn-magic text-white font-bold py-2.5 rounded-xl shadow-md flex justify-center items-center gap-2 text-sm">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                            ดาวน์โหลด (PNG)
-                        </button>
-
-                        <button id="btn-save-drive-only" onclick="saveToDriveOnly()" class="hidden w-full bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 font-bold py-2.5 rounded-xl transition-all flex justify-center items-center gap-2 text-sm">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path></svg>
-                            เซฟลง Drive อย่างเดียว
-                        </button>
-                        
-                        <button onclick="generateAndDownloadQR('svg')" class="w-full bg-white text-gray-700 font-semibold py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 flex justify-center items-center gap-2 text-xs">โหลดไฟล์เวกเตอร์ (SVG)</button>
-                    </div>
-                    <div id="tracking-notice" class="hidden mt-2 bg-green-50 text-emerald-800 text-[10px] p-2 rounded-lg border border-green-200 w-full text-center font-medium">บันทึกประวัติ: <b>เปิดใช้งาน</b></div>
-                </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">เวลาสิ้นสุด <span class="text-red-500">*</span></label>
+              <input type="time" id="endTime" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
             </div>
-        </div>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">วัตถุประสงค์การใช้งาน <span class="text-red-500">*</span></label>
+            <textarea id="purpose" required rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="ระบุเรื่องประชุม"></textarea>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">หมายเหตุ (ถ้ามี)</label>
+            <textarea id="notes" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="เช่น เครื่องเสียง, เบรก..."></textarea>
+          </div>
+          <button type="submit" id="submitBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-lg shadow transition">
+            ส่งคำขอจองห้องประชุม
+          </button>
+        </form>
+      </section>
 
-        <div id="section-stats" class="tab-content glass-card rounded-2xl p-5 sm:p-8">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 border-b border-gray-200/50 pb-3 sm:pb-4 gap-3">
-                <h2 class="text-lg sm:text-xl font-bold theme-text">ประวัติการสร้าง QR Code</h2>
-                <button onclick="loadStats()" class="w-full sm:w-auto bg-white hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl text-xs font-semibold border border-gray-200 shadow-sm transition-all flex justify-center items-center gap-2">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                    รีเฟรชประวัติ
-                </button>
-            </div>
-            <div class="overflow-x-auto sm:rounded-xl sm:border sm:border-white sm:bg-white/40 sm:shadow-sm">
-                <table class="w-full text-left border-collapse min-w-full sm:min-w-[800px] mobile-cards">
-                    <thead>
-                        <tr class="theme-bg-soft theme-text-solid text-xs border-b border-white">
-                            <th class="p-3 font-semibold">รหัสอ้างอิง</th>
-                            <th class="p-3 font-semibold">ประเภท</th>
-                            <th class="p-3 font-semibold">ข้อมูลปลายทาง</th>
-                            <th class="p-3 font-semibold">วันที่สร้าง</th>
-                            <th class="p-3 font-semibold text-center">จัดการ</th>
-                        </tr>
-                    </thead>
-                    <tbody id="statsBody" class="divide-y divide-gray-100/50">
-                        <tr><td colspan="5" class="p-8 text-center text-gray-400 text-sm">กำลังรอการเชื่อมต่อฐานข้อมูล...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <div id="section-settings" class="tab-content glass-card rounded-2xl p-5 sm:p-8">
-            <h2 class="text-lg sm:text-xl font-bold theme-text mb-4">ตั้งค่าแอปพลิเคชัน (Admin)</h2>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                <div class="bg-white/60 p-4 sm:p-5 rounded-2xl border border-white shadow-sm">
-                    <h3 class="font-bold text-gray-800 flex items-center gap-2 mb-3 text-sm">Google Sheets (Database)</h3>
-                    <div id="sheet-status-box" class="p-3 rounded-xl text-xs font-bold mb-3 bg-gray-100 text-gray-600">ตรวจสอบสถานะ...</div>
-                    <button id="btn-setup-sheet" onclick="setupSheet()" class="hidden w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 rounded-xl transition-all shadow-sm text-xs">⚙️ จัดรูปแบบตารางใหม่ (สร้างรหัสผ่าน)</button>
-                </div>
-
-                <div class="bg-white/60 p-4 sm:p-5 rounded-2xl border border-white shadow-sm">
-                    <h3 class="font-bold text-gray-800 flex items-center gap-2 mb-3 text-sm">Google Drive (Storage & History)</h3>
-                    <div class="bg-blue-50 text-blue-800 p-3 rounded-xl text-[10px] sm:text-xs mb-3 border border-blue-100">ระบบจะสร้างโฟลเดอร์ย่อยเก็บภาพ QR ลงโฟลเดอร์หลักนี้ (แชร์โฟลเดอร์เป็น Anyone with link > Viewer ด้วยนะครับ)</div>
-                    <input type="text" id="setting-drive" placeholder="รหัส Folder ID ของ Google Drive" class="w-full px-4 py-2 rounded-xl border ring-1 ring-gray-200 outline-none mb-3 text-sm">
-                    <div class="flex items-center justify-between bg-emerald-50 p-3 rounded-xl border border-emerald-100">
-                        <span class="text-xs font-bold text-emerald-800">บันทึกประวัติและรูปลง Drive อัตโนมัติ</span>
-                        <input type="checkbox" id="setting-tracking" onchange="updateQR()" class="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500">
-                    </div>
-                    <div class="flex flex-col sm:flex-row gap-2 mt-4">
-                        <button onclick="saveSettings()" id="btn-save-settings" class="flex-1 btn-magic text-white font-bold py-2.5 rounded-xl transition-all shadow-sm text-xs flex justify-center items-center gap-2">💾 บันทึกตั้งค่า</button>
-                        <button onclick="testConnection()" id="btn-test-conn" class="flex-1 bg-gray-800 hover:bg-gray-900 text-white font-bold py-2.5 rounded-xl transition-all shadow-sm text-xs flex justify-center items-center gap-2">🔌 ทดสอบเชื่อมต่อ</button>
-                    </div>
-                    <div id="conn-result" class="text-xs mt-2 font-medium"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- [ข้อ 2] Footer พร้อม Visitor Counter -->
-    <footer class="w-full text-center p-3 sm:p-4 mt-auto">
-        <div class="flex flex-col items-center gap-2">
-            <!-- Visitor Counter Widget -->
-            <div class="visitor-counter inline-flex items-center gap-2.5 px-4 py-2 rounded-full text-xs font-semibold text-emerald-800">
-                <svg class="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                </svg>
-                <span class="text-emerald-600">ผู้เข้าชมทั้งหมด:</span>
-                <span id="visitor-count" class="count-num font-bold text-emerald-700 text-sm min-w-[3ch] text-center">
-                    <span class="opacity-40">···</span>
-                </span>
-                <span class="text-emerald-600">ครั้ง</span>
-            </div>
-            <p class="text-[10px] sm:text-xs text-gray-400 font-medium">พัฒนาโดย สำนักงานสหกรณ์จังหวัดขอนแก่น</p>
-        </div>
-    </footer>
-
-    <!-- [ข้อ 4] โหลด Library หลักแบบ defer เพื่อไม่บล็อก first paint -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.5.0/lib/qr-code-styling.js" defer></script>
-
-    <script>
-        // ตรวจสอบว่ารันบน GitHub Pages (Standalone) หรือ Google Apps Script
-        var IS_STANDALONE = (typeof google === 'undefined');
-
-        // ============================================================
-        // Mock Runner สำหรับ GitHub Pages / Standalone
-        // ใช้โครงสร้าง Factory (object ธรรมดา) แทน singleton instance
-        // เพื่อให้ทุก call chain ได้ instance ใหม่ที่ถูก callback ถูกต้อง
-        // ============================================================
-        if (IS_STANDALONE) {
-            function makeMockRunner(sCb, fCb) {
-                return {
-                    withSuccessHandler: function(cb) { return makeMockRunner(cb, fCb); },
-                    withFailureHandler: function(cb) { return makeMockRunner(sCb, cb); },
-
-                    loadSettings: function() {
-                        setTimeout(function() {
-                            if (sCb) sCb({ driveId: '', enableTracking: false, sheetReady: false, sheetMessage: '⚠️ โหมด Standalone (GitHub Pages) — ฟีเจอร์ที่ต้องการ Google Sheets ไม่พร้อมใช้งาน' });
-                        }, 200);
-                    },
-                    setupSheet: function() {
-                        setTimeout(function() { if (sCb) sCb({ success: true }); }, 300);
-                    },
-                    saveSettings: function(d) {
-                        setTimeout(function() { if (sCb) sCb({ success: true }); }, 300);
-                    },
-                    testConnection: function(d) {
-                        setTimeout(function() { if (sCb) sCb({ drive: false, driveMsg: 'โหมด Standalone — ไม่สามารถเชื่อมต่อ Drive ได้' }); }, 300);
-                    },
-                    getScanStats: function() {
-                        setTimeout(function() { if (sCb) sCb([]); }, 200);
-                    },
-                    uploadToDriveAndTrack: function(b, t, type) {
-                        // ปิดกั้นที่ saveToDriveOnly() แล้ว mock นี้ไม่ถูกเรียกในสภาวะปกติ
-                        setTimeout(function() { if (fCb) fCb({ message: 'ฟีเจอร์นี้ต้องใช้งานผ่าน Google Apps Script เท่านั้น' }); }, 200);
-                    },
-                    verifyLogin: function(pwd) {
-                        setTimeout(function() {
-                            if (sCb) {
-                                if (pwd === 'welcome@3k') sCb({ success: true, role: 'admin' });
-                                else if (pwd === 'cpdkk') sCb({ success: true, role: 'user' });
-                                else sCb({ success: false, message: 'รหัสผ่านไม่ถูกต้อง' });
-                            }
-                        }, 300);
-                    },
-                    getPresetLogoBase64: function(id) {
-                        // ใน Standalone โหลดโลโก้จาก URL โดยตรง ไม่ผ่าน mock นี้
-                        setTimeout(function() { if (fCb) fCb({}); }, 200);
-                    },
-                    trackPageView: function() {
-                        // ใน Standalone ใช้ localStorage แทน ไม่ผ่าน mock นี้
-                        setTimeout(function() { if (sCb) sCb(0); }, 200);
-                    }
-                };
-            }
-            window.google = { script: { run: makeMockRunner(null, null) } };
-        }
-
-        // [ข้อ 4] ใช้ตัวแปร global แต่ init หลัง defer scripts โหลดเสร็จ
-        var Toast;
-        var currentType = 'url';
-        var uploadedLogo = null;
-        var downloadSize = 500;
-        var qrCode = null;
-        var currentUserRole = 'guest';
-
-        // [ข้อ 4] init ระบบทั้งหมดหลัง defer scripts โหลดครบ
-        function initApp() {
-            Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true });
-            qrCode = new QRCodeStyling({ 
-                width: 220, height: 220,   // [ข้อ 3] ลด preview size ลงให้พอดี
-                type: "svg", 
-                dotsOptions: { type: "rounded" }, 
-                backgroundOptions: { color: "#ffffff" }, 
-                imageOptions: { crossOrigin: "anonymous", margin: 10, imageSize: 0.4 } 
-            });
-            fetchSettings();
-            checkAuthOnLoad();
-            loadPresetLogos();
-            // [ข้อ 2] นับ Page View เมื่อโหลดหน้า
-            trackAndShowPageView();
-        }
-
-        // [ข้อ 4] รอ defer scripts ก่อน init
-        if (document.readyState === 'loading') {
-            window.addEventListener('DOMContentLoaded', function() {
-                // ตรวจสอบว่า Swal และ QRCodeStyling พร้อมแล้ว
-                var checkReady = setInterval(function() {
-                    if (typeof Swal !== 'undefined' && typeof QRCodeStyling !== 'undefined') {
-                        clearInterval(checkReady);
-                        initApp();
-                    }
-                }, 50);
-            });
-        } else {
-            var checkReady = setInterval(function() {
-                if (typeof Swal !== 'undefined' && typeof QRCodeStyling !== 'undefined') {
-                    clearInterval(checkReady);
-                    initApp();
-                }
-            }, 50);
-        }
-
-        // ==========================================
-        // [ข้อ 2] ระบบนับและแสดง Page View
-        // — Standalone (GitHub Pages): ใช้ localStorage
-        // — Google Apps Script: ใช้ google.script.run
-        // ==========================================
-        function trackAndShowPageView() {
-            if (IS_STANDALONE) {
-                // นับ Page View ด้วย localStorage (client-side)
-                try {
-                    var key = 'qr_page_views';
-                    var count = parseInt(localStorage.getItem(key) || '0', 10) + 1;
-                    localStorage.setItem(key, count);
-                    var el = document.getElementById('visitor-count');
-                    if (el) el.innerHTML = Number(count).toLocaleString('th-TH');
-                } catch(e) {
-                    var elErr = document.getElementById('visitor-count');
-                    if (elErr) elErr.innerHTML = '-';
-                }
-            } else {
-                google.script.run
-                    .withSuccessHandler(function(total) {
-                        var el = document.getElementById('visitor-count');
-                        if (el) el.innerHTML = Number(total).toLocaleString('th-TH');
-                    })
-                    .withFailureHandler(function() {
-                        var el = document.getElementById('visitor-count');
-                        if (el) el.innerHTML = '-';
-                    })
-                    .trackPageView();
-            }
-        }
-
-        // ==========================================
-        // ระบบ QR Size
-        // ==========================================
-        function setQRSize(size) {
-            downloadSize = size;
-            document.querySelectorAll('.qr-size-btn').forEach(function(btn) {
-                btn.classList.remove('active-size', 'theme-border', 'theme-bg-soft', 'theme-text-solid');
-                btn.classList.add('border-transparent', 'bg-gray-100', 'text-gray-500');
-            });
-            var activeBtn = document.querySelector('.qr-size-btn[data-size="' + size + '"]');
-            if (activeBtn) {
-                activeBtn.classList.add('active-size', 'theme-border', 'theme-bg-soft', 'theme-text-solid');
-                activeBtn.classList.remove('border-transparent', 'bg-gray-100', 'text-gray-500');
-            }
-        }
-
-        // เลือกโลโก้ Preset
-        function selectPresetLogo(imgEl) {
-            var base64 = imgEl.getAttribute('data-base64');
-            if (!base64) return;
-            uploadedLogo = base64;
-            document.getElementById('logoInput').value = "";
-            document.getElementById('removeLogoBtn').classList.remove('hidden');
-            document.getElementById('logo-size-container').classList.remove('hidden');
-            document.querySelectorAll('.preset-logo-btn').forEach(function(b) {
-                b.classList.remove('border-emerald-500', 'shadow-md');
-                b.classList.add('border-gray-200');
-            });
-            imgEl.classList.add('border-emerald-500', 'shadow-md');
-            imgEl.classList.remove('border-gray-200');
-            updateQR();
-        }
-
-        // โหลด Preset Logos
-        function loadPresetLogos() {
-            var presetList = [
-                { id: '1HTQ5zfiY2iK-KYYbCXeBQwkBejQIVYMB', label: 'CPD', directUrl: 'https://img2.pic.in.th/393a2076f179a3823.png' }
-            ];
-
-            var container = document.getElementById('preset-logos-container');
-            var loadingEl = document.getElementById('preset-logos-loading');
-
-            presetList.forEach(function(item) {
-                var wrapper = document.createElement('div');
-                wrapper.id = 'preset-wrap-' + item.id;
-                wrapper.className = 'flex flex-col items-center gap-1';
-                wrapper.innerHTML =
-                    '<div class="w-12 h-12 flex items-center justify-center rounded-lg border border-gray-200 bg-gray-50">' +
-                        '<span class="spinner border-t-emerald-500 w-4 h-4 border-[2px]"></span>' +
-                    '</div>' +
-                    '<span class="text-[9px] text-gray-400">' + item.label + '</span>';
-                container.appendChild(wrapper);
-            });
-
-            if (loadingEl) loadingEl.style.display = 'none';
-
-            presetList.forEach(function(item) {
-                // Standalone (GitHub Pages): โหลดจาก URL โดยตรง ไม่ผ่าน GAS
-                if (IS_STANDALONE) {
-                    var wrapper = document.getElementById('preset-wrap-' + item.id);
-                    if (!wrapper) return;
-                    var logoUrl = item.directUrl || ('https://drive.google.com/thumbnail?id=' + item.id + '&sz=w200');
-                    
-                    // โหลดรูปเป็น base64 เพื่อให้ QR Code ใช้งานได้
-                    var xhr = new XMLHttpRequest();
-                    xhr.open('GET', logoUrl, true);
-                    xhr.responseType = 'blob';
-                    xhr.onload = function() {
-                        if (xhr.status === 200) {
-                            var reader = new FileReader();
-                            reader.onloadend = function() {
-                                var base64Data = reader.result;
-                                var img = document.createElement('img');
-                                img.src = base64Data;
-                                img.setAttribute('data-base64', base64Data);
-                                img.className = 'w-12 h-12 object-contain p-1 bg-white cursor-pointer rounded-lg border-2 border-gray-200 hover:border-emerald-500 hover:shadow-md transition-all preset-logo-btn';
-                                img.title = item.label;
-                                img.onclick = function() { selectPresetLogo(this); };
-                                var labelEl = document.createElement('span');
-                                labelEl.className = 'text-[9px] text-gray-500 font-medium';
-                                labelEl.textContent = item.label;
-                                wrapper.innerHTML = '';
-                                wrapper.appendChild(img);
-                                wrapper.appendChild(labelEl);
-                            };
-                            reader.readAsDataURL(xhr.response);
-                        } else {
-                            // fallback: ใช้ src URL โดยตรง (ไม่ต้อง base64)
-                            var img = document.createElement('img');
-                            img.src = logoUrl;
-                            img.setAttribute('data-base64', logoUrl);
-                            img.className = 'w-12 h-12 object-contain p-1 bg-white cursor-pointer rounded-lg border-2 border-gray-200 hover:border-emerald-500 hover:shadow-md transition-all preset-logo-btn';
-                            img.title = item.label;
-                            img.crossOrigin = 'anonymous';
-                            img.onerror = function() { wrapper.remove(); };
-                            img.onclick = function() { selectPresetLogo(this); };
-                            var labelEl = document.createElement('span');
-                            labelEl.className = 'text-[9px] text-gray-500 font-medium';
-                            labelEl.textContent = item.label;
-                            wrapper.innerHTML = '';
-                            wrapper.appendChild(img);
-                            wrapper.appendChild(labelEl);
-                        }
-                    };
-                    xhr.onerror = function() {
-                        // fallback สุดท้าย: แสดงรูปตรงๆ
-                        var img = document.createElement('img');
-                        img.src = logoUrl;
-                        img.setAttribute('data-base64', logoUrl);
-                        img.className = 'w-12 h-12 object-contain p-1 bg-white cursor-pointer rounded-lg border-2 border-gray-200 hover:border-emerald-500 hover:shadow-md transition-all preset-logo-btn';
-                        img.title = item.label;
-                        img.crossOrigin = 'anonymous';
-                        img.onclick = function() { selectPresetLogo(this); };
-                        var labelEl = document.createElement('span');
-                        labelEl.className = 'text-[9px] text-gray-500 font-medium';
-                        labelEl.textContent = item.label;
-                        wrapper.innerHTML = '';
-                        wrapper.appendChild(img);
-                        wrapper.appendChild(labelEl);
-                    };
-                    xhr.send();
-                } else {
-                    // Google Apps Script: ใช้ google.script.run เหมือนเดิม
-                    google.script.run
-                        .withSuccessHandler(function(base64Data) {
-                            var wrapper = document.getElementById('preset-wrap-' + item.id);
-                            if (!wrapper) return;
-                            if (!base64Data) { wrapper.remove(); return; }
-
-                            var img = document.createElement('img');
-                            img.src = base64Data;
-                            img.setAttribute('data-base64', base64Data);
-                            img.className = 'w-12 h-12 object-contain p-1 bg-white cursor-pointer rounded-lg border-2 border-gray-200 hover:border-emerald-500 hover:shadow-md transition-all preset-logo-btn';
-                            img.title = item.label;
-                            img.onclick = function() { selectPresetLogo(this); };
-
-                            var labelEl = document.createElement('span');
-                            labelEl.className = 'text-[9px] text-gray-500 font-medium';
-                            labelEl.textContent = item.label;
-
-                            wrapper.innerHTML = '';
-                            wrapper.appendChild(img);
-                            wrapper.appendChild(labelEl);
-                        })
-                        .withFailureHandler(function() {
-                            var wrapper = document.getElementById('preset-wrap-' + item.id);
-                            if (wrapper) wrapper.remove();
-                        })
-                        .getPresetLogoBase64(item.id);
-                }
-            });
-        }
-
-        function checkAuthOnLoad() {
-            var role = sessionStorage.getItem('qr_auth_role');
-            if (role) {
-                loginSuccess(role, false);
-            } else {
-                applyGuestMode();
-            }
-        }
-
-        function applyGuestMode() {
-            currentUserRole = 'guest';
-            document.getElementById('nav-settings').style.display = 'none';
-            document.getElementById('nav-stats').style.display = 'none';
-            
-            var btnSaveDrive = document.getElementById('btn-save-drive-only');
-            if(btnSaveDrive) btnSaveDrive.classList.add('hidden');
-            
-            if (document.getElementById('section-settings').classList.contains('active') || 
-                document.getElementById('section-stats').classList.contains('active')) {
-                switchTab('create');
-            }
-        }
-
-        function handleAuth() {
-            if (currentUserRole !== 'guest') {
-                // ออกจากระบบโดยไม่ reload หน้า เพื่อป้องกันหน้าจอขาว
-                sessionStorage.removeItem('qr_auth_role');
-                currentUserRole = 'guest';
-                // รีเซ็ตปุ่ม Auth กลับสู่สถานะ Login
-                var btnMobile = document.getElementById('auth-btn');
-                var btnDesktop = document.getElementById('auth-btn-desktop');
-                if (btnMobile) {
-                    btnMobile.innerText = 'เข้าสู่ระบบ';
-                    btnMobile.classList.replace('text-red-500', 'text-emerald-600');
-                }
-                if (btnDesktop) {
-                    btnDesktop.classList.replace('bg-red-50', 'bg-emerald-50');
-                    btnDesktop.classList.replace('text-red-600', 'text-emerald-700');
-                    btnDesktop.classList.replace('border-red-100', 'border-emerald-100');
-                    btnDesktop.classList.replace('hover:bg-red-100', 'hover:bg-emerald-100');
-                    btnDesktop.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg><span>เข้าสู่ระบบ</span>';
-                }
-                applyGuestMode();
-                Toast.fire({ icon: 'info', title: 'ออกจากระบบเรียบร้อย' });
-            } else {
-                Swal.fire({
-                    title: 'เข้าสู่ระบบ',
-                    input: 'password',
-                    inputPlaceholder: 'ระบุรหัสผ่านของคุณ...',
-                    showCancelButton: true,
-                    confirmButtonText: 'เข้าสู่ระบบ',
-                    cancelButtonText: 'ยกเลิก',
-                    confirmButtonColor: '#10b981',
-                    showLoaderOnConfirm: true,
-                    preConfirm: (pwd) => {
-                        if (!pwd) {
-                            Swal.showValidationMessage('กรุณากรอกรหัสผ่าน');
-                            return false;
-                        }
-                        return new Promise((resolve) => {
-                            google.script.run
-                                .withSuccessHandler(function(res) {
-                                    if (res.success) resolve(res);
-                                    else { Swal.showValidationMessage(res.message); resolve(); }
-                                })
-                                .withFailureHandler(function() {
-                                    Swal.showValidationMessage('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
-                                    resolve();
-                                })
-                                .verifyLogin(pwd);
-                        });
-                    }
-                }).then((result) => {
-                    if (result.isConfirmed && result.value && result.value.success) {
-                        loginSuccess(result.value.role, true);
-                    }
-                });
-            }
-        }
-
-        function loginSuccess(role, showToast) {
-            currentUserRole = role;
-            sessionStorage.setItem('qr_auth_role', role);
-            
-            var btnMobile = document.getElementById('auth-btn');
-            var btnDesktop = document.getElementById('auth-btn-desktop');
-            var logoutText = 'ออกจากระบบ (' + (role === 'admin' ? 'Admin' : 'User') + ')';
-            
-            if (btnMobile) {
-                btnMobile.innerText = logoutText;
-                btnMobile.classList.replace('text-emerald-600', 'text-red-500');
-            }
-            if (btnDesktop) {
-                btnDesktop.classList.replace('bg-emerald-50', 'bg-red-50');
-                btnDesktop.classList.replace('text-emerald-700', 'text-red-600');
-                btnDesktop.classList.replace('border-emerald-100', 'border-red-100');
-                btnDesktop.classList.replace('hover:bg-emerald-100', 'hover:bg-red-100');
-                btnDesktop.innerHTML = '<svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg><span class="font-bold text-xs">' + logoutText + '</span>';
-            }
-            
-            var btnSaveDrive = document.getElementById('btn-save-drive-only');
-
-            if (role === 'admin') {
-                document.getElementById('nav-settings').style.display = 'flex';
-                document.getElementById('nav-stats').style.display = 'block'; 
-                if(btnSaveDrive) btnSaveDrive.classList.remove('hidden');
-            } else if (role === 'user') {
-                document.getElementById('nav-settings').style.display = 'none';
-                document.getElementById('nav-stats').style.display = 'block'; 
-                if(btnSaveDrive) btnSaveDrive.classList.add('hidden');
-                if (document.getElementById('section-settings').classList.contains('active')) {
-                    switchTab('create');
-                }
-            } else {
-                document.getElementById('nav-settings').style.display = 'none';
-                document.getElementById('nav-stats').style.display = 'none'; 
-                if(btnSaveDrive) btnSaveDrive.classList.add('hidden');
-                if (document.getElementById('section-settings').classList.contains('active') || 
-                    document.getElementById('section-stats').classList.contains('active')) {
-                    switchTab('create');
-                }
-            }
-            
-            if (showToast) Toast.fire({ icon: 'success', title: 'เข้าสู่ระบบสำเร็จในฐานะ: ' + role });
-        }
-
-        function switchTab(tab) {
-            document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.remove('active'); });
-            document.getElementById('section-' + tab).classList.add('active');
-            document.querySelectorAll('.nav-btn').forEach(function(btn) { btn.className = 'nav-btn px-4 py-1.5 font-medium text-gray-600 hover:text-gray-900 rounded-lg transition-all whitespace-nowrap'; });
-            var activeBtn = document.getElementById('nav-' + tab);
-            activeBtn.className = 'nav-btn px-4 py-1.5 font-semibold text-white theme-gradient rounded-lg shadow-md transition-all flex items-center gap-1 whitespace-nowrap';
-            if (tab === 'stats') loadStats();
-        }
-
-        function setDataType(type) {
-            currentType = type;
-            document.querySelectorAll('.type-btn').forEach(function(btn) { btn.classList.remove('active', 'theme-border', 'theme-bg-soft', 'theme-text-solid'); btn.classList.add('border-transparent', 'bg-white/60', 'text-gray-500'); });
-            document.getElementById('type-' + type).classList.add('active', 'theme-border', 'theme-bg-soft', 'theme-text-solid');
-            document.getElementById('type-' + type).classList.remove('border-transparent', 'bg-white/60', 'text-gray-500');
-            document.querySelectorAll('.input-group').forEach(function(g) { g.classList.add('hidden'); });
-            document.getElementById('input-' + type).classList.remove('hidden');
-            updateQR();
-        }
-
-        function handleLogoUpload(event) {
-            var file = event.target.files[0];
-            if (file) {
-                var reader = new FileReader();
-                reader.onload = function(e) { uploadedLogo = e.target.result; document.getElementById('removeLogoBtn').classList.remove('hidden'); document.getElementById('logo-size-container').classList.remove('hidden'); updateQR(); };
-                reader.readAsDataURL(file);
-            }
-        }
-
-        function removeLogo() { 
-            uploadedLogo = null;
-            document.getElementById('logoInput').value = ""; 
-            document.getElementById('removeLogoBtn').classList.add('hidden'); 
-            document.getElementById('logo-size-container').classList.add('hidden');
-            document.querySelectorAll('.preset-logo-btn').forEach(function(b) {
-                b.classList.remove('border-emerald-500', 'shadow-md');
-                b.classList.add('border-gray-200');
-            });
-            updateQR(); 
-        }
-
-        function updateLogoSizeLabel() { document.getElementById('logo-size-label').innerText = Math.round(document.getElementById('logoSize').value * 100) + '%'; }
-
-        function getQRData() {
-            if (currentType === 'url') return document.getElementById('data-url').value;
-            else if (currentType === 'text') return document.getElementById('data-text').value;
-            else if (currentType === 'wifi') { var ssid = document.getElementById('wifi-ssid').value;
-            var pass = document.getElementById('wifi-pass').value; var type = document.getElementById('wifi-type').value; if(ssid) return "WIFI:S:" + ssid + ";T:" + type + ";P:" + pass + ";H:false;;";
-            }
-            else if (currentType === 'phone') { var p = document.getElementById('data-phone').value;
-            if(p) return "tel:" + p; }
-            else if (currentType === 'email') { var e = document.getElementById('email-to').value;
-            var s = document.getElementById('email-sub').value; if(e) return "mailto:" + e + "?subject=" + encodeURIComponent(s);
-            }
-            else if (currentType === 'promptpay') return generatePromptPayPayload(document.getElementById('promptpay-id').value, document.getElementById('promptpay-amount').value);
-            return "";
-        }
-
-        function updateQR() {
-            if (!qrCode) return; // [ข้อ 4] Guard: ยังไม่ init
-            var isTracking = document.getElementById('setting-tracking') ?
-            document.getElementById('setting-tracking').checked : false;
-            var data = getQRData();
-            if (!data && currentType !== 'url') { document.getElementById('qr-empty-state').classList.remove('hidden'); document.getElementById('qr-code-wrapper').innerHTML = ""; return; }
-            document.getElementById('qr-empty-state').classList.add('hidden');
-            var wrapper = document.getElementById('qr-code-wrapper');
-            wrapper.innerHTML = "";
-            var safeData = data || "https://khonkaen.web.cpd.go.th/";
-            try { safeData = unescape(encodeURIComponent(safeData)); } catch (e) {}
-
-            var cornersType = document.getElementById('cornersType').value;
-            var qrColorDark = document.getElementById('qrColorDark').value;
-            var qrColorLight = document.getElementById('qrColorLight').value;
-            var dotsType = document.getElementById('dotsType').value;
-            var logoSize = parseFloat(document.getElementById('logoSize').value);
-            qrCode.update({ 
-                data: safeData, image: uploadedLogo || "", dotsOptions: { color: qrColorDark, type: dotsType }, 
-                backgroundOptions: { color: qrColorLight }, cornersSquareOptions: { type: cornersType, color: qrColorDark }, 
-                cornersDotOptions: { type: (cornersType === 'square' ? 'square' : 'dot'), color: qrColorDark },
-                imageOptions: { crossOrigin: "anonymous", imageSize: logoSize } 
-            });
-            qrCode.append(wrapper);
-            if (isTracking && data) document.getElementById('tracking-notice').classList.remove('hidden'); else document.getElementById('tracking-notice').classList.add('hidden');
-        }
-
-        // ==========================================
-        // generateAndDownloadQR — ดาวน์โหลดอย่างเดียว ไม่บันทึก Sheet
-        // ==========================================
-        function generateAndDownloadQR(ext) {
-            var dataToLog = getQRData();
-
-            var qrColorDark = document.getElementById('qrColorDark').value;
-            var qrColorLight = document.getElementById('qrColorLight').value;
-            var dotsType = document.getElementById('dotsType').value;
-            var cornersType = document.getElementById('cornersType').value;
-            var logoSize = parseFloat(document.getElementById('logoSize').value);
-            var safeData = dataToLog || "https://khonkaen.web.cpd.go.th/";
-            try { safeData = unescape(encodeURIComponent(safeData)); } catch(e) {}
-
-            // SVG: ดาวน์โหลดจาก qrCode ตัว preview โดยตรง ไม่บันทึก Sheet
-            if (ext === 'svg') {
-                qrCode.download({ name: "QR_" + Date.now(), extension: 'svg' });
-                Toast.fire({ icon: 'success', title: 'ดาวน์โหลด SVG สำเร็จ!' });
-                return;
-            }
-
-            // PNG: สร้างและดาวน์โหลดทันที ไม่บันทึก Sheet
-            var downloadQR = new QRCodeStyling({
-                width: downloadSize, height: downloadSize, type: "png", data: safeData,
-                image: uploadedLogo || "",
-                dotsOptions: { color: qrColorDark, type: dotsType },
-                backgroundOptions: { color: qrColorLight },
-                cornersSquareOptions: { type: cornersType, color: qrColorDark },
-                cornersDotOptions: { type: (cornersType === 'square' ? 'square' : 'dot'), color: qrColorDark },
-                imageOptions: { crossOrigin: "anonymous", margin: Math.round(downloadSize * 0.038), imageSize: logoSize }
-            });
-            downloadQR.download({ name: "QR_" + Date.now(), extension: 'png' });
-            Toast.fire({ icon: 'success', title: 'ดาวน์โหลดสำเร็จ (' + downloadSize + 'x' + downloadSize + 'px)' });
-        }
-
-        function saveToDriveOnly() {
-            // Standalone (GitHub Pages): ฟีเจอร์นี้ต้องใช้งานผ่าน Google Apps Script เท่านั้น
-            if (IS_STANDALONE) {
-                Swal.fire({
-                    icon: 'info',
-                    title: 'ฟีเจอร์นี้ไม่รองรับบน GitHub Pages',
-                    html: '<p class="text-sm text-gray-600">การบันทึกลง Google Drive ต้องใช้งานผ่าน <b>Google Apps Script</b> เท่านั้น<br><br>คุณยังสามารถ <b>ดาวน์โหลด QR Code</b> ลงเครื่องได้ปกติครับ</p>',
-                    confirmButtonColor: '#10b981',
-                    confirmButtonText: 'เข้าใจแล้ว'
-                });
-                return;
-            }
-
-            var dataToLog = getQRData();
-            if (!dataToLog && currentType !== 'url') { Swal.fire('แจ้งเตือน', 'กรุณากรอกข้อมูลให้ครบก่อนบันทึกครับ', 'warning'); return; }
-            Swal.fire({ title: 'กำลังบันทึกลง Drive...', html: 'กรุณารอสักครู่ ระบบกำลังสร้างโฟลเดอร์', allowOutsideClick: false, didOpen: function() { Swal.showLoading(); } });
-            
-            var qrColorDark = document.getElementById('qrColorDark').value;
-            var qrColorLight = document.getElementById('qrColorLight').value;
-            var dotsType = document.getElementById('dotsType').value;
-            var cornersType = document.getElementById('cornersType').value;
-            var logoSize = parseFloat(document.getElementById('logoSize').value);
-            var safeData = dataToLog || "https://khonkaen.web.cpd.go.th/";
-            try { safeData = unescape(encodeURIComponent(safeData)); } catch(e) {}
-            var saveQR = new QRCodeStyling({
-                width: downloadSize, height: downloadSize, type: "png", data: safeData,
-                image: uploadedLogo || "",
-                dotsOptions: { color: qrColorDark, type: dotsType },
-                backgroundOptions: { color: qrColorLight },
-                cornersSquareOptions: { type: cornersType, color: qrColorDark },
-                cornersDotOptions: { type: (cornersType === 'square' ? 'square' : 'dot'), color: qrColorDark },
-                imageOptions: { crossOrigin: "anonymous", margin: Math.round(downloadSize * 0.038), imageSize: logoSize }
-            });
-            
-            saveQR.getRawData("png").then(function(blob) {
-                var reader = new FileReader();
-                reader.onloadend = function() {
-                    google.script.run
-                    .withSuccessHandler(function(res) { Swal.close(); Toast.fire({ icon: 'success', title: 'จัดเก็บลง Google Drive สำเร็จ!' }); loadStats(); })
-                    .withFailureHandler(function(err) { Swal.close(); Swal.fire('ข้อผิดพลาด Drive', err.message || err, 'error'); })
-                    .uploadToDriveAndTrack(reader.result, dataToLog, currentType);
-                };
-                reader.readAsDataURL(blob);
-            }).catch(function(err) { Swal.close(); });
-        }
-
-        function getTypeBadge(typeStr) {
-            var classes = "px-2 py-0.5 rounded-md text-[10px] font-bold whitespace-nowrap ";
-            if(typeStr === 'เว็บไซต์') return '<span class="' + classes + 'bg-purple-100 text-purple-700">🌐 ' + typeStr + '</span>';
-            if(typeStr === 'ข้อความ') return '<span class="' + classes + 'bg-gray-100 text-gray-700">📝 ' + typeStr + '</span>';
-            if(typeStr === 'WiFi') return '<span class="' + classes + 'bg-cyan-100 text-cyan-700">📶 ' + typeStr + '</span>';
-            if(typeStr === 'เบอร์โทร') return '<span class="' + classes + 'bg-green-100 text-green-700">📞 ' + typeStr + '</span>';
-            if(typeStr === 'อีเมล') return '<span class="' + classes + 'bg-orange-100 text-orange-700">✉️ ' + typeStr + '</span>';
-            if(typeStr === 'พร้อมเพย์') return '<span class="' + classes + 'bg-blue-100 text-blue-800">💸 ' + typeStr + '</span>';
-            return '<span class="' + classes + 'bg-gray-100 text-gray-800">' + typeStr + '</span>';
-        }
-
-        function loadStats() {
-            var tbody = document.getElementById('statsBody');
-            tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center"><div class="spinner border-t-emerald-500"></div><br><span class="text-xs text-gray-500 mt-2 block">กำลังโหลดประวัติ...</span></td></tr>';
-            google.script.run.withSuccessHandler(function(data) {
-                tbody.innerHTML = '';
-                if (!data || data.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-gray-400 text-sm">ยังไม่มีข้อมูลประวัติในระบบ</td></tr>'; return; }
-                data.slice().reverse().forEach(function(row) {
-                    var tr = document.createElement('tr');
-                    tr.className = "hover:bg-gray-50/50 transition-colors";
-                    var actions = '';
-                    if (row[5] && row[4]) {
-                        actions += '<button onclick="previewQRFromDrive(\'' + row[5] + '\', \'' + row[4] + '\')" class="bg-fuchsia-500 hover:bg-fuchsia-600 text-white p-1.5 rounded-lg shadow-sm transition-all" title="ดูรูป QR"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg></button>';
-                        actions += '<a href="' + row[4] + '" target="_blank" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded-lg text-[10px] font-bold shadow-sm transition-all flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path></svg>Drive</a>';
-                    } else { actions = '<span class="text-[10px] text-gray-400 italic">ไม่ได้บันทึก Drive</span>'; }
-                    tr.innerHTML = '<td data-label="รหัส" class="p-3 text-xs font-bold text-gray-700">' + row[0] + '</td>' + '<td data-label="ประเภท" class="p-3">' + getTypeBadge(row[1]) + '</td>' + '<td data-label="ข้อมูล" class="p-3 text-xs text-gray-600 truncate max-w-[120px] sm:max-w-[180px]" title="' + row[2] + '">' + row[2] + '</td>' + '<td data-label="วันที่สร้าง" class="p-3 text-xs text-gray-500">' + row[3] + '</td>' + '<td data-label="จัดการ" class="p-3 flex gap-2 justify-start sm:justify-center items-center">' + actions + '</td>';
-                    tbody.appendChild(tr);
-                });
-            }).getScanStats();
-        }
-
-        function previewQRFromDrive(fileId, folderUrl) {
-            var imageUrl = "https://drive.google.com/thumbnail?id=" + fileId + "&sz=w600";
-            Swal.fire({ title: '<span class="text-emerald-600 text-base">พรีวิว QR Code</span>', html: '<div class="flex flex-col items-center"><img src="' + imageUrl + '" class="w-48 h-48 sm:w-56 sm:h-56 mb-3 rounded-lg shadow-md border object-contain"><p class="text-[10px] sm:text-xs text-gray-500 mb-2">รูปภาพถูกเก็บไว้ใน Drive ของคุณเรียบร้อยแล้ว</p></div>', showCancelButton: true, confirmButtonText: '📂 เปิดโฟลเดอร์', cancelButtonText: '❌ ปิด', confirmButtonColor: '#10b981', cancelButtonColor: '#9ca3af' }).then(function(result) { if (result.isConfirmed) { window.open(folderUrl, '_blank'); } });
-        }
-
-        function fetchSettings() {
-            google.script.run.withSuccessHandler(function(res) {
-                var sb = document.getElementById('sheet-status-box');
-                if (sb) { sb.innerText = res.sheetMessage; sb.className = 'p-3 rounded-xl text-xs font-bold mb-3 ' + (res.sheetReady ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'); }
-                if (res.sheetReady) document.getElementById('btn-setup-sheet').classList.add('hidden');
-                else document.getElementById('btn-setup-sheet').classList.remove('hidden');
-                
-                document.getElementById('setting-drive').value = res.driveId || '';
-                document.getElementById('setting-tracking').checked = res.enableTracking || false;
-                updateQR();
-            }).loadSettings();
-        }
-
-        function setupSheet() { 
-            var btn = document.getElementById('btn-setup-sheet');
-            var original = btn.innerHTML; btn.innerHTML = '<span class="spinner"></span> กำลังจัดการ...'; btn.disabled = true;
-            google.script.run.withSuccessHandler(function() { fetchSettings(); Toast.fire({ icon: 'success', title: 'จัดรูปแบบตารางสำเร็จ' }); btn.innerHTML = original; btn.disabled = false; }).setupSheet();
-        }
+      <section class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col">
         
-        function saveSettings() {
-            var btn = document.getElementById('btn-save-settings');
-            var original = btn.innerHTML; btn.innerHTML = '<span class="spinner"></span> กำลังบันทึก...'; btn.disabled = true;
-            var data = { 
-                driveId: document.getElementById('setting-drive').value, 
-                enableTracking: document.getElementById('setting-tracking').checked 
-            };
-            google.script.run.withSuccessHandler(function(res) { 
-                Toast.fire({ icon: 'success', title: 'บันทึกการตั้งค่าเรียบร้อย' }); 
-                fetchSettings(); 
-                btn.innerHTML = original; 
-                btn.disabled = false; 
-            }).saveSettings(data);
+        <div class="flex flex-wrap border-b border-gray-200 mb-5 no-print gap-1 shrink-0 items-center">
+          <button onclick="switchView('pending')" id="tabPending" class="hidden py-2.5 px-4 text-gray-500 hover:text-amber-600 font-medium text-sm sm:text-base transition focus:outline-none items-center gap-2">
+            🔔 รออนุมัติ <span id="pendingBadgeCount" class="bg-red-500 text-white text-[11px] px-2 py-0.5 rounded-full font-bold shadow-sm">0</span>
+          </button>
+          <button onclick="switchView('calendar')" id="tabCalendar" class="py-2.5 px-4 text-emerald-600 border-b-2 border-emerald-600 font-bold text-sm sm:text-base transition focus:outline-none flex items-center gap-2">📅 ปฏิทิน</button>
+          <button onclick="switchView('list')" id="tabList" class="py-2.5 px-4 text-gray-500 hover:text-emerald-600 font-medium text-sm sm:text-base transition focus:outline-none flex items-center gap-2">📋 รายการทั้งหมด</button>
+          <button onclick="switchView('report')" id="tabReport" class="hidden py-2.5 px-4 text-gray-500 hover:text-emerald-600 font-medium text-sm sm:text-base transition focus:outline-none items-center gap-2">📊 แดชบอร์ดรายงาน</button>
+          <button onclick="handleRefresh()" id="btnRefresh" class="ml-auto mb-1 flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-sm" title="รีเฟรชข้อมูล">
+            <span id="refreshIcon" class="text-base leading-none">🔄</span> รีเฟรช
+          </button>
+        </div>
+
+        <div id="statusLegendBar" class="mb-4 p-3 bg-gray-50 rounded-xl border border-gray-200/60 flex flex-wrap gap-4 items-center justify-start text-xs sm:text-sm font-medium text-gray-600 no-print shrink-0">
+          <span class="text-gray-400 font-semibold mr-1">💡 สถานะสี:</span>
+          <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded-full bg-[#F59E0B]"></span> รอดำเนินการ </span>
+          <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded-full bg-[#10B981]"></span> อนุมัติ </span>
+          <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded-full bg-[#EF4444]"></span> ไม่อนุมัติ </span>
+        </div>
+
+        <div id="pendingAdminView" class="hidden space-y-3 max-h-[75vh] overflow-y-auto pr-1 no-print"></div>
+
+        <div id="calendarContainer" class="no-print"><div id="calendar"></div></div>
+        
+        <div id="bookingListView" class="hidden flex-col h-[75vh] no-print">
+          <div class="bg-gray-50 p-3 sm:p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-3 mb-4 shrink-0">
+            <h2 class="text-xs sm:text-base font-bold text-gray-800 flex items-center gap-2">📋 รายการข้อมูลการจองห้องประชุม</h2>
+            <div class="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
+              <select id="listRoomFilter" onchange="renderListView()" class="w-full sm:w-auto bg-white border border-gray-300 text-gray-700 text-xs font-semibold rounded-lg focus:ring-2 focus:ring-emerald-500 block px-2.5 py-1.5 outline-none bg-white">
+                <option value="all">🏢 ทุกห้องประชุม</option>
+                <option value="ห้องประชุมเกลียวเชือก">ห้องประชุมเกลียวเชือก (33 คน)</option>
+                <option value="ห้องประชุมสายรุ้ง">ห้องประชุมสายรุ้ง (9 คน)</option>
+              </select>
+              <div class="flex items-center gap-2 w-full sm:w-auto">
+                <select id="listMonthSelect" onchange="onListMonthDropdownChange()" class="bg-emerald-600 text-white font-bold text-xs rounded-lg px-2.5 py-1.5 outline-none border border-emerald-700 cursor-pointer focus:ring-2 focus:ring-emerald-400">
+                  <option value="1">มกราคม</option>
+                  <option value="2">กุมภาพันธ์</option>
+                  <option value="3">มีนาคม</option>
+                  <option value="4">เมษายน</option>
+                  <option value="5">พฤษภาคม</option>
+                  <option value="6">มิถุนายน</option>
+                  <option value="7">กรกฎาคม</option>
+                  <option value="8">สิงหาคม</option>
+                  <option value="9">กันยายน</option>
+                  <option value="10">ตุลาคม</option>
+                  <option value="11">พฤศจิกายน</option>
+                  <option value="12">ธันวาคม</option>
+                </select>
+                <select id="listYearSelect" onchange="onListMonthDropdownChange()" class="bg-emerald-600 text-white font-bold text-xs rounded-lg px-2.5 py-1.5 outline-none border border-emerald-700 cursor-pointer focus:ring-2 focus:ring-emerald-400"></select>
+              </div>
+            </div>
+          </div>
+          <div id="listItemsContainer" class="flex-grow space-y-4 overflow-y-auto pr-1 pb-6"></div>
+        </div>
+
+        <div id="reportContainer" class="hidden">
+          <div id="reportPrintArea">
+            <div class="flex flex-wrap justify-between items-start mb-6">
+              <div class="flex flex-col">
+                <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">📊 แดชบอร์ดสรุปผลการจอง</h2>
+                <span id="reportPeriodText" class="text-sm font-semibold text-emerald-600 mt-1">กำลังโหลดข้อมูล...</span>
+              </div>
+              <div class="flex gap-2 no-print">
+                <button onclick="exportToCSV()" class="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1.5 rounded shadow flex items-center gap-1"><span class="text-lg">📥</span> ส่งออก Excel</button>
+                <button onclick="window.print()" class="bg-gray-600 hover:bg-gray-700 text-white text-sm px-3 py-1.5 rounded shadow flex items-center gap-1"><span class="text-lg">🖨️</span> พิมพ์รายงาน</button>
+              </div>
+            </div>
+
+            <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6 no-print">
+              <div class="flex flex-col md:flex-row items-center gap-4">
+                <div class="flex items-center gap-2">
+                  <span class="text-gray-600 font-bold">📅 เลือกดูข้อมูล:</span>
+                  <select id="reportFilterMode" onchange="updateReportUI()" class="bg-white border border-gray-300 text-gray-700 text-sm rounded-lg p-2 outline-none focus:ring-2 focus:ring-emerald-500">
+                    <option value="all">ทั้งหมด</option>
+                    <option value="month" selected>รายเดือน</option>
+                    <option value="year">รายปี</option>
+                  </select>
+                </div>
+                
+                <div id="reportMonthPicker" class="flex items-center gap-2 transition-all">
+                  <select id="reportMonth" onchange="applyReportFilters()" class="bg-white border border-gray-300 text-gray-700 text-sm rounded-lg p-2 outline-none">
+                    <option value="1">มกราคม</option>  <option value="2">กุมภาพันธ์</option>
+                    <option value="3">มีนาคม</option>    <option value="4">เมษายน</option>
+                    <option value="5">พฤษภาคม</option>   <option value="6">มิถุนายน</option>
+                    <option value="7">กรกฎาคม</option>   <option value="8">สิงหาคม</option>
+                    <option value="9">กันยายน</option>   <option value="10">ตุลาคม</option>
+                    <option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option>
+                  </select>
+                  <select id="reportYearForMonth" onchange="applyReportFilters()" class="bg-white border border-gray-300 text-gray-700 text-sm rounded-lg p-2 outline-none"></select>
+                </div>
+
+                <div id="reportYearPicker" class="hidden flex items-center gap-2 transition-all">
+                  <select id="reportYear" onchange="applyReportFilters()" class="bg-white border border-gray-300 text-gray-700 text-sm rounded-lg p-2 outline-none"></select>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl text-center shadow-sm">
+                <div class="text-blue-500 text-sm font-bold mb-1">การจองทั้งหมด</div>
+                <div id="repTotal" class="text-3xl font-extrabold text-blue-700">0</div>
+              </div>
+              <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-center shadow-sm">
+                <div class="text-emerald-600 text-sm font-bold mb-1">อนุมัติแล้ว</div>
+                <div id="repApproved" class="text-3xl font-extrabold text-emerald-700">0</div>
+              </div>
+              <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl text-center shadow-sm">
+                <div class="text-amber-600 text-sm font-bold mb-1">รอดำเนินการ</div>
+                <div id="repPending" class="text-3xl font-extrabold text-amber-700">0</div>
+              </div>
+              <div class="bg-red-50 border border-red-200 p-4 rounded-xl text-center shadow-sm">
+                <div class="text-red-500 text-sm font-bold mb-1">ไม่อนุมัติ</div>
+                <div id="repRejected" class="text-3xl font-extrabold text-red-700">0</div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm">
+                <h3 class="text-sm font-bold text-gray-700 mb-3 text-center">สถิติการใช้งานแต่ละห้องประชุม</h3>
+                <div class="relative h-48 w-full"><canvas id="roomChart"></canvas></div>
+              </div>
+              <div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm">
+                <h3 class="text-sm font-bold text-gray-700 mb-3 text-center">สัดส่วนสถานะการจอง</h3>
+                <div class="relative h-48 w-full"><canvas id="statusChart"></canvas></div>
+              </div>
+            </div>
+
+            <div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm mb-6">
+              <h3 class="text-sm font-bold text-gray-700 mb-3 text-center">สถิติการจองแยกตามกลุ่มงาน</h3>
+              <div class="relative w-full" id="deptChartWrapper"><canvas id="deptChart"></canvas></div>
+            </div>
+            
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm mb-6 overflow-hidden">
+              <div class="bg-emerald-600 px-4 py-2.5 flex items-center justify-between">
+                <span class="text-white font-bold text-sm">📋 รายการข้อมูลการจองห้องประชุม</span>
+                <span id="reportTableCount" class="text-emerald-100 text-xs">0 รายการ</span>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm border-collapse">
+                  <thead>
+                    <tr class="bg-gray-100 text-gray-600 text-xs uppercase tracking-wide">
+                      <th class="px-3 py-3 text-center font-bold w-8">#</th>
+                      <th class="px-3 py-3 text-left font-bold whitespace-nowrap">📅 วันที่</th>
+                      <th class="px-3 py-3 text-center font-bold whitespace-nowrap">⏰ เวลา</th>
+                      <th class="px-3 py-3 text-center font-bold whitespace-nowrap">🏢 ห้อง</th>
+                      <th class="px-3 py-3 text-left font-bold">🎯 วัตถุประสงค์</th>
+                      <th class="px-3 py-3 text-left font-bold whitespace-nowrap">👤 ผู้จอง / กลุ่มงาน</th>
+                      <th class="px-3 py-3 text-center font-bold whitespace-nowrap">สถานะ</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reportTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+      </section>
+    </main>
+
+    <footer class="w-full bg-white border-t border-gray-200 py-6 text-center text-xs sm:text-sm text-gray-500 no-print">
+      <div class="max-w-7xl mx-auto px-6 flex flex-col items-center gap-2">
+        <p class="mt-1 font-medium text-gray-600">พัฒนาโดย <span class="text-emerald-700 font-bold">นายนิธิกร เสริมปรุงสุข </span> นักวิชาการสหกรณ์ เวอร์ชัน 2.0 สงวนลิขสิทธิ์ © 2026</p>
+        
+        <div id="viewCountWrapper" class="mt-2 flex items-center justify-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100 shadow-sm transition-opacity duration-500 opacity-0">
+          <span class="text-lg">👁️</span>
+          <span class="font-medium text-gray-600">จำนวนผู้เยี่ยมชม:</span>
+          <span id="viewCountDisplay" class="font-bold text-emerald-600 tracking-wide">...</span>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <div id="detailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 no-print">
+    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+       <h3 class="text-xl font-bold text-gray-900 border-b pb-2 mb-4">🔍 รายละเอียดคำขอจอง</h3>
+       <input type="hidden" id="modalBookingId">
+       
+       <div id="modalViewMode" class="space-y-3 text-sm text-gray-700">
+         <div><span class="font-semibold text-gray-400">ผู้ขอจอง:</span> <span id="detailName" class="font-semibold text-gray-900 ml-1"></span></div>
+         <div><span class="font-semibold text-gray-400">อีเมล:</span> <span id="detailEmail" class="font-semibold text-gray-900 ml-1"></span></div>
+         <div><span class="font-semibold text-gray-400">กลุ่มงาน:</span> <span id="detailDept" class="font-semibold text-gray-900 ml-1"></span></div>
+         <div><span class="font-semibold text-gray-400">ห้องประชุม:</span> <span id="detailRoom" class="font-semibold text-emerald-700 ml-1"></span></div>
+         <div><span class="font-semibold text-gray-400">วันที่จอง:</span> <span id="detailDate" class="font-semibold text-gray-900 ml-1"></span></div>
+         <div><span class="font-semibold text-gray-400">ช่วงเวลา:</span> <span id="detailTime" class="font-semibold text-gray-900 ml-1"></span></div>
+         <div>
+            <span class="font-semibold text-gray-400">วัตถุประสงค์:</span>
+            <p id="detailPurpose" class="mt-1 bg-gray-50 p-2.5 rounded-lg text-gray-800 border border-gray-100 break-words"></p>
+         </div>
+         <div>
+            <span class="font-semibold text-gray-400">หมายเหตุเพิ่มเติม:</span>
+            <p id="detailNotes" class="mt-1 bg-amber-50/60 p-2.5 rounded-lg text-amber-900 border border-amber-100 break-words italic font-medium"></p>
+         </div>
+         <div class="flex items-center gap-2 mt-2">
+            <span class="font-semibold text-gray-400">สถานะ:</span> 
+            <span id="detailStatus" class="text-xs px-2.5 py-1 rounded-full font-bold shadow-sm"></span>
+         </div>
+       </div>
+
+       <div id="modalEditMode" class="space-y-3 text-sm text-gray-700 hidden">
+         <div>
+           <label class="block text-xs font-semibold text-gray-500 mb-1">ชื่อ-นามสกุล ผู้จอง <span class="text-red-500">*</span></label>
+           <input type="text" id="editName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
+         </div>
+         <div>
+           <label class="block text-xs font-semibold text-gray-500 mb-1">อีเมล (E-mail) <span class="text-red-500">*</span></label>
+           <input type="email" id="editEmail" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
+         </div>
+         <div>
+           <label class="block text-xs font-semibold text-gray-500 mb-1">กลุ่มงาน <span class="text-red-500">*</span></label>
+           <select id="editDept" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
+              <option value="ฝ่ายบริหารทั่วไป">ฝ่ายบริหารทั่วไป</option>
+              <option value="กลุ่มจัดตั้งและส่งเสริมสหกรณ์">กลุ่มจัดตั้งและส่งเสริมสหกรณ์</option>
+              <option value="กลุ่มส่งเสริมและพัฒนาการบริหารการจัดการสหกรณ์">กลุ่มส่งเสริมและพัฒนาการบริหารการจัดการสหกรณ์</option>
+              <option value="กลุ่มส่งเสริมและพัฒนาธุรกิจสหกรณ์">กลุ่มส่งเสริมและพัฒนาธุรกิจสหกรณ์</option>
+              <option value="กลุ่มตรวจการสหกรณ์">กลุ่มตรวจการสหกรณ์</option>
+              <option value="กลุ่มส่งเสริมสหกรณ์ 1">กลุ่มส่งเสริมสหกรณ์ 1</option>
+              <option value="กลุ่มส่งเสริมสหกรณ์ 2">กลุ่มส่งเสริมสหกรณ์ 2</option>
+              <option value="กลุ่มส่งเสริมสหกรณ์ 3">กลุ่มส่งเสริมสหกรณ์ 3</option>
+              <option value="กลุ่มส่งเสริมสหกรณ์ 4">กลุ่มส่งเสริมสหกรณ์ 4</option>
+              <option value="กลุ่มส่งเสริมสหกรณ์ 5">กลุ่มส่งเสริมสหกรณ์ 5</option>
+              <option value="กลุ่มส่งเสริมสหกรณ์ 6">กลุ่มส่งเสริมสหกรณ์ 6</option>
+              <option value="กลุ่มส่งเสริมสหกรณ์ 7">กลุ่มส่งเสริมสหกรณ์ 7</option>
+              <option value="กลุ่มส่งเสริมสหกรณ์ 8">กลุ่มส่งเสริมสหกรณ์ 8</option>
+              <option value="นิคมสหกรณ์ดงมูล">นิคมสหกรณ์ดงมูล</option>
+           </select>
+         </div>
+         <div>
+           <label class="block text-xs font-semibold text-gray-500 mb-1">ห้องประชุม <span class="text-red-500">*</span></label>
+           <select id="editRoom" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
+             <option value="ห้องประชุมเกลียวเชือก (รองรับ 33 ที่นั่ง)">ห้องประชุมเกลียวเชือก (รองรับ 33 ที่นั่ง)</option>
+             <option value="ห้องประชุมสายรุ้ง (รองรับ 9 ที่นั่ง)">ห้องประชุมสายรุ้ง (รองรับ 9 ที่นั่ง)</option>
+           </select>
+         </div>
+         <div>
+           <label class="block text-xs font-semibold text-gray-500 mb-1">วันที่ต้องการจอง <span class="text-red-500">*</span></label>
+           <input type="text" id="editDate" placeholder="เลือกวันที่..." required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white cursor-pointer">
+         </div>
+         <div class="grid grid-cols-2 gap-3">
+           <div>
+             <label class="block text-xs font-semibold text-gray-500 mb-1">เวลาเริ่ม <span class="text-red-500">*</span></label>
+             <input type="time" id="editStartTime" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
+           </div>
+           <div>
+             <label class="block text-xs font-semibold text-gray-500 mb-1">เวลาสิ้นสุด <span class="text-red-500">*</span></label>
+             <input type="time" id="editEndTime" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
+           </div>
+         </div>
+         <div>
+           <label class="block text-xs font-semibold text-gray-500 mb-1">วัตถุประสงค์การใช้งาน <span class="text-red-500">*</span></label>
+           <textarea id="editPurpose" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"></textarea>
+         </div>
+         <div>
+           <label class="block text-xs font-semibold text-gray-500 mb-1">หมายเหตุ (ถ้ามี)</label>
+           <textarea id="editNotes" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"></textarea>
+         </div>
+         <div class="flex gap-2 pt-2">
+           <button onclick="saveBookingEdit()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-bold shadow-md transition">💾 บันทึกแก้ไข</button>
+           <button onclick="toggleEditMode(false)" class="w-full bg-gray-300 hover:bg-gray-400 text-gray-800 py-2 rounded-lg font-medium transition">❌ ยกเลิก</button>
+         </div>
+       </div>
+       
+       <div id="adminActionSection" class="mt-6 flex flex-col gap-3 hidden">
+          <div class="flex w-full gap-2">
+            <button onclick="handleAdminAction('อนุมัติ')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-lg font-bold shadow-md transition">✅ อนุมัติ</button>
+            <button onclick="handleAdminAction('ไม่อนุมัติ')" class="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg font-bold shadow-md transition">❌ ไม่อนุมัติ</button>
+          </div>
+          <div class="flex w-full gap-2">
+            <button onclick="toggleEditMode(true)" class="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-1.5 px-3 rounded-lg text-sm font-semibold shadow-sm transition flex items-center justify-center gap-1">✏️ แก้ไข</button>
+            <button onclick="deleteBookingAction()" class="flex-1 bg-gray-600 hover:bg-gray-800 text-white py-1.5 px-3 rounded-lg text-sm font-semibold shadow-sm transition flex items-center justify-center gap-1">🗑️ ลบ</button>
+          </div>
+       </div>
+       <button onclick="closeModal()" id="btnCloseModal" class="w-full mt-3 bg-gray-100 hover:bg-gray-200 text-gray-800 py-2.5 rounded-lg font-medium transition">ปิดหน้าต่าง</button>
+    </div>
+  </div>
+
+  <script>
+    Chart.register(ChartDataLabels);
+    let calendar;
+    let datePicker; 
+    let editDatePicker;
+
+    let currentRole = 'guest';
+    let runtimeSessionKey = ''; 
+    let globalBookings = [];
+    let currentListDate = new Date();
+    let chartInstanceRoom = null;
+    let chartInstanceStatus = null;
+    let chartInstanceDept = null;
+
+    function checkSecureLogin() {
+      const pwd = document.getElementById('systemPassword').value;
+      const loginBtn = document.getElementById('loginBtn');
+      loginBtn.disabled = true;
+      loginBtn.innerText = 'กำลังตรวจสอบ...';
+      
+      google.script.run
+        .withSuccessHandler(res => {
+          loginBtn.disabled = false; loginBtn.innerText = 'เข้าสู่ระบบ';
+          if (res.success) {
+            currentRole = res.role; runtimeSessionKey = pwd; 
+            unlockSystem();
+          } else {
+            Swal.fire({ icon: 'error', title: 'การเข้าถึงล้มเหลว', text: res.message });
+            document.getElementById('systemPassword').value = '';
+          }
+        })
+        .withFailureHandler(err => {
+          loginBtn.disabled = false; loginBtn.innerText = 'เข้าสู่ระบบ';
+          Swal.fire('Error', err.message, 'error');
+        }).verifySystemPassword(pwd);
+    }
+
+    function unlockSystem() {
+      document.getElementById('loginGate').classList.add('hidden');
+      document.getElementById('mainApp').classList.remove('hidden');
+      
+      const tabPending = document.getElementById('tabPending');
+      const tabReport = document.getElementById('tabReport');
+      
+      if (currentRole === 'admin') {
+        document.getElementById('adminBadge').classList.remove('hidden');
+        document.getElementById('userBadge').classList.add('hidden');
+        tabReport.classList.remove('hidden'); tabReport.classList.add('flex');
+        if (datePicker) datePicker.set('minDate', null);
+      } else {
+        document.getElementById('adminBadge').classList.add('hidden');
+        document.getElementById('userBadge').classList.remove('hidden');
+        tabReport.classList.add('hidden'); tabReport.classList.remove('flex');
+        if (datePicker) datePicker.set('minDate', 'today');
+      }
+      
+      tabPending.classList.remove('hidden'); 
+      tabPending.classList.add('flex');
+      if (currentRole !== 'admin' && !document.getElementById('reportContainer').classList.contains('hidden')) {
+        switchView('calendar');
+      }
+
+      initCalendar(); 
+      fetchAndRenderEvents();
+    }
+
+    function logout() {
+      currentRole = 'guest';
+      runtimeSessionKey = '';
+      document.getElementById('systemPassword').value = '';
+      document.getElementById('loginGate').classList.remove('hidden'); 
+      document.getElementById('mainApp').classList.add('hidden');
+      document.getElementById('tabReport').classList.add('hidden');
+      document.getElementById('tabReport').classList.remove('flex');
+    }
+
+    function switchView(viewType) {
+      document.getElementById('pendingAdminView').classList.add('hidden');
+      document.getElementById('calendarContainer').classList.add('hidden');
+      document.getElementById('bookingListView').classList.add('hidden');
+      document.getElementById('bookingListView').classList.remove('flex');
+      document.getElementById('reportContainer').classList.add('hidden');
+      document.getElementById('statusLegendBar').classList.add('hidden');
+      const tPen = document.getElementById('tabPending');
+      const tCal = document.getElementById('tabCalendar');
+      const tList = document.getElementById('tabList');
+      const tRep = document.getElementById('tabReport');
+      const baseClass = "py-2.5 px-4 text-gray-500 hover:text-emerald-600 font-medium text-sm sm:text-base transition focus:outline-none flex items-center gap-2";
+      tCal.className = tList.className = baseClass;
+      tPen.className = "py-2.5 px-4 text-gray-500 hover:text-amber-600 font-medium text-sm sm:text-base transition focus:outline-none flex items-center gap-2";
+      tRep.className = currentRole === 'admin' ? baseClass : "hidden";
+
+      const activeClass = "py-2.5 px-4 text-emerald-600 border-b-2 border-emerald-600 font-bold text-sm sm:text-base transition focus:outline-none flex items-center gap-2";
+      const activePendingClass = "py-2.5 px-4 text-amber-600 border-b-2 border-amber-500 font-bold text-sm sm:text-base transition focus:outline-none flex items-center gap-2";
+      if (viewType === 'pending') {
+        document.getElementById('pendingAdminView').classList.remove('hidden'); 
+        tPen.className = activePendingClass;
+      } else if (viewType === 'calendar') {
+        document.getElementById('calendarContainer').classList.remove('hidden'); 
+        document.getElementById('statusLegendBar').classList.remove('hidden');
+        tCal.className = activeClass;
+        // รอให้ DOM repaint ก่อน แล้วค่อย updateSize เพื่อให้ calendar แสดงผลถูกต้องทุกครั้ง
+        if (calendar) {
+          requestAnimationFrame(() => {
+            calendar.updateSize();
+          });
+        }
+      } else if (viewType === 'list') {
+        document.getElementById('bookingListView').classList.remove('hidden'); 
+        document.getElementById('bookingListView').classList.add('flex'); 
+        document.getElementById('statusLegendBar').classList.remove('hidden');
+        tList.className = activeClass;
+        renderListView(); 
+      } else if (viewType === 'report' && currentRole === 'admin') { 
+        document.getElementById('reportContainer').classList.remove('hidden');
+        tRep.className = activeClass;
+      }
+    }
+
+    function initCalendar() {
+      const el = document.getElementById('calendar');
+      if (!el) return;
+      if (calendar) { calendar.destroy(); calendar = null; }
+
+      // FullCalendar ต้องการให้ container มองเห็นก่อนจึงจะคำนวณขนาดได้ถูกต้อง
+      const container = document.getElementById('calendarContainer');
+      const wasHidden = container.classList.contains('hidden');
+      if (wasHidden) container.classList.remove('hidden');
+
+      calendar = new FullCalendar.Calendar(el, {
+        initialView: 'dayGridMonth',
+        headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' },
+        locale: 'th',
+        eventClick: function(info) { openModalFromObj(info.event.extendedProps, info.event.id); },
+        height: 'auto'
+      });
+      calendar.render();
+
+      // ซ่อนกลับถ้าเปิดมาเพื่อ init เท่านั้น
+      if (wasHidden) container.classList.add('hidden');
+    }
+
+    function fetchAndRenderEvents() {
+      if (!calendar) return;
+      calendar.removeAllEvents();
+      google.script.run
+        .withSuccessHandler(bookings => {
+          globalBookings = bookings; 
+          renderListView(); 
+          
+          if (currentRole === 'admin') {
+            renderDashboard(bookings);
+          }
+          
+          renderPendingAdmin(bookings);
+
+          bookings.forEach(b => {
+            let color = '#F59E0B';
+            if (b.status === 'อนุมัติ') color = '#10B981';
+            if (b.status === 'ไม่อนุมัติ') color = '#EF4444';
+            calendar.addEvent({
+              id: b.id, title: `${b.room.split(' ')[0]} - ${b.name}`,
+              start: `${b.date}T${b.startTime}`, end: `${b.date}T${b.endTime}`,
+              backgroundColor: color, borderColor: color, extendedProps: b
+            });
+          });
+
+          // หลังเพิ่ม events ครบ บังคับ render ใหม่เพื่อป้องกัน layout พัง
+          requestAnimationFrame(() => {
+            if (calendar) calendar.updateSize();
+          });
+        })
+        .withFailureHandler(err => {
+          console.error('fetchAndRenderEvents error:', err);
+        })
+        .getBookings();
+    }
+
+    function formatThaiDate(dStr) {
+      if(!dStr) return ''; const p = dStr.split('-');
+      return `${p[2]}/${p[1]}/${parseInt(p[0]) + 543}`;
+    }
+
+    function handleRefresh() {
+      const btn = document.getElementById('btnRefresh');
+      const icon = document.getElementById('refreshIcon');
+      if (btn) btn.disabled = true;
+      if (icon) icon.style.animation = 'spin 0.8s linear infinite';
+      // ใส่ style spin ถ้ายังไม่มี
+      if (!document.getElementById('refreshSpinStyle')) {
+        const s = document.createElement('style');
+        s.id = 'refreshSpinStyle';
+        s.textContent = '@keyframes spin { from { display:inline-block; transform:rotate(0deg); } to { transform:rotate(360deg); } }';
+        document.head.appendChild(s);
+      }
+      fetchAndRenderEvents();
+      // คืนสถานะปุ่มหลัง 1.5 วิ
+      setTimeout(() => {
+        if (btn) btn.disabled = false;
+        if (icon) icon.style.animation = '';
+      }, 1500);
+    }
+
+    function renderPendingAdmin(bookings) {
+      const pendingItems = bookings.filter(b => b.status === 'รอดำเนินการ');
+      const countBadge = document.getElementById('pendingBadgeCount');
+      if(countBadge) countBadge.innerText = pendingItems.length;
+
+      const container = document.getElementById('pendingAdminView');
+      if (pendingItems.length === 0) {
+        container.innerHTML = `<div class="text-center py-16 text-gray-400 font-medium bg-white rounded-xl border border-gray-100 shadow-sm">🎉 ไม่มีรายการรออนุมัติค้างในระบบ</div>`;
+        return;
+      }
+
+      let html = '';
+      pendingItems.sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(b => {
+         let actionButtons = '';
+         if (currentRole === 'admin') {
+             actionButtons = `
+               <div class="flex flex-wrap gap-2 md:flex-col md:w-32 justify-center">
+                 <button onclick="inlineAdminAction('${b.id}', 'อนุมัติ')" class="w-full flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-sm font-bold shadow-sm transition">✅ อนุมัติ</button>
+                 <button onclick="inlineAdminAction('${b.id}', 'ไม่อนุมัติ')" class="w-full flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-bold shadow-sm transition">❌ ไม่อนุมัติ</button>
+                 <div class="w-full flex gap-2">
+                   <button onclick="inlineEditAction('${b.id}')" class="w-full bg-amber-500 hover:bg-amber-600 text-white px-2 py-1.5 rounded-lg text-xs font-bold shadow-sm transition">✏️ แก้ไข</button>
+                   <button onclick="inlineDeleteAction('${b.id}')" class="w-full bg-gray-600 hover:bg-gray-700 text-white px-2 py-1.5 rounded-lg text-xs font-bold shadow-sm transition">🗑️ ลบ</button>
+                 </div>
+               </div>`;
+         } else {
+             actionButtons = `
+               <div class="flex flex-col md:w-32 justify-center items-end">
+                 <span class="bg-amber-100 text-amber-800 border border-amber-200 px-3 py-2 rounded-lg text-sm font-bold shadow-sm w-full text-center">⏳ รอดำเนินการ</span>
+               </div>`;
+         }
+
+         html += `
+         <div class="bg-white rounded-xl border-l-4 border-l-amber-500 border-t border-r border-b border-gray-200 shadow-sm p-4 hover:shadow-md transition">
+            <div class="flex flex-col md:flex-row justify-between md:items-center gap-4">
+               <div class="flex-grow">
+                 <div class="flex items-center gap-2 mb-1.5">
+                   <h4 class="font-bold text-gray-900 text-base md:text-lg">${b.room}</h4>
+                 </div>
+                 <p class="text-base font-semibold text-emerald-700">📅 ${formatThaiDate(b.date)} | ⏰ ${b.startTime} - ${b.endTime} น.</p>
+                 <p class="text-base text-gray-500 mt-1.5 bg-gray-50 p-2 rounded border border-gray-100">🎯 <span class="font-base">:</span> ${b.purpose}</p>
+                 ${b.notes ? `<p class="text-base text-amber-700 mt-1 bg-amber-50 p-2 rounded border border-amber-100 italic">📝 <span class="font-bold ">หมายเหตุ:<span class="font-medium"> ${b.notes}</p>` : ''}
+                 <p class="text-base text-gray-700 mt-1">👤 <span class="font-medium">${b.name}</span> (${b.department})</p>
+                 <p class="text-sm text-gray-500 mt-1">📧 ${b.email || 'ไม่ระบุอีเมล'}</p>
+               </div>
+               ${actionButtons}
+            </div>
+         </div>
+         `;
+      });
+      container.innerHTML = html;
+    }
+
+    function inlineAdminAction(id, status) {
+      Swal.fire({ title: 'ยืนยัน?', text: `ต้องการเปลี่ยนสถานะเป็น "${status}" ใช่หรือไม่?`, icon: 'question', showCancelButton: true, confirmButtonColor: '#059669', confirmButtonText: 'บันทึกสถานะ'
+      }).then((r) => {
+        if (r.isConfirmed) {
+          Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+          google.script.run.withSuccessHandler(res => {
+            if (res.success) { Swal.fire('สำเร็จ!', res.message, 'success'); fetchAndRenderEvents(); } 
+            else Swal.fire('ล้มเหลว', res.message, 'error');
+          }).updateBookingStatus(id, status, runtimeSessionKey);
+        }
+      });
+    }
+
+    function inlineDeleteAction(id) {
+      Swal.fire({ title: 'ยืนยันลบ?', text: "ลบแล้วกู้คืนไม่ได้!", icon: 'warning', showCancelButton: true, confirmButtonColor: '#DC2626', confirmButtonText: 'ลบทิ้งถาวร'
+      }).then((r) => {
+        if (r.isConfirmed) {
+          Swal.fire({ title: 'กำลังลบ...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+          google.script.run.withSuccessHandler(res => {
+            if (res.success) { Swal.fire('สำเร็จ!', res.message, 'success'); fetchAndRenderEvents(); } 
+            else Swal.fire('ล้มเหลว', res.message, 'error');
+          }).deleteBookingRecord(id, runtimeSessionKey);
+        }
+      });
+    }
+
+    function inlineEditAction(id) {
+      openModalFromId(id);
+      toggleEditMode(true);
+    }
+
+    function populateListYearDropdown() {
+      const sel = document.getElementById('listYearSelect');
+      if (!sel) return;
+      // รวบรวมปีจากข้อมูลจริง + ปีปัจจุบัน
+      const currentYear = new Date().getFullYear();
+      let years = globalBookings
+        .map(b => b.date ? parseInt(b.date.split('-')[0]) : null)
+        .filter(y => y !== null);
+      years.push(currentYear);
+      const uniqueYears = [...new Set(years)].sort((a, b) => a - b);
+      const prevVal = sel.value;
+      sel.innerHTML = uniqueYears.map(y => `<option value="${y}">${y + 543}</option>`).join('');
+      // คืนค่าเดิมถ้าหายังอยู่ใน list
+      if (prevVal && uniqueYears.includes(parseInt(prevVal))) sel.value = prevVal;
+      else sel.value = currentYear;
+    }
+
+    function onListMonthDropdownChange() {
+      const m = parseInt(document.getElementById('listMonthSelect').value);
+      const y = parseInt(document.getElementById('listYearSelect').value);
+      currentListDate = new Date(y, m - 1, 1);
+      renderListView();
+    }
+
+    function changeListMonth(offset) {
+      currentListDate.setMonth(currentListDate.getMonth() + offset);
+      renderListView();
+    }
+
+    function renderListView() {
+      const container = document.getElementById('listItemsContainer');
+      if (!container) return;
+      const tM = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+      const targetYear = currentListDate.getFullYear();
+      const targetMonth = currentListDate.getMonth() + 1;
+
+      document.getElementById('listMonthDisplay') && (document.getElementById('listMonthDisplay').innerText = `${tM[targetMonth-1]} ${targetYear + 543}`);
+      // sync dropdown ให้ตรงกับ currentListDate เสมอ
+      populateListYearDropdown();
+      const mSel = document.getElementById('listMonthSelect');
+      const ySel = document.getElementById('listYearSelect');
+      if (mSel) mSel.value = targetMonth;
+      if (ySel) ySel.value = targetYear;
+      const roomFilter = document.getElementById('listRoomFilter').value;
+      const filtered = globalBookings.filter(b => {
+        if (!b.date) return false;
+        const [y, m, d] = b.date.split('-');
+        const isSameMonth = (parseInt(y) === targetYear) && (parseInt(m) === targetMonth);
+        const isSameRoom = (roomFilter === 'all') || b.room.includes(roomFilter);
+        return isSameMonth && isSameRoom;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="text-center py-16 text-gray-400 font-medium bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col items-center justify-center gap-3">
+            <span class="text-5xl">📭</span>
+            <span class="text-lg">ไม่มีข้อมูลการจองห้องประชุมในเดือนนี้</span>
+        </div>`;
+        return;
+      }
+
+      filtered.sort((a, b) => a.date !== b.date ? a.date.localeCompare(b.date) : a.startTime.localeCompare(b.startTime));
+
+      let rowNum = 0;
+      let rows = '';
+      filtered.forEach(b => {
+        rowNum++;
+        const p = b.date.split('-');
+        const dateDisplay = `${p[2]} ${tM[parseInt(p[1])-1]} ${parseInt(p[0])+543}`;
+
+        let statusBadge = '';
+        let rowBg = rowNum % 2 === 0 ? 'bg-gray-50' : 'bg-white';
+        if (b.status === 'อนุมัติ') {
+          statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 whitespace-nowrap">✅ อนุมัติ</span>';
+        } else if (b.status === 'ไม่อนุมัติ') {
+          statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-red-100 text-red-700 border border-red-200 whitespace-nowrap">❌ ไม่อนุมัติ</span>';
+        } else {
+          statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-700 border border-amber-200 whitespace-nowrap">⏳ รอดำเนินการ</span>';
         }
 
-        function testConnection() {
-            var btn = document.getElementById('btn-test-conn');
-            var original = btn.innerHTML; btn.innerHTML = '<span class="spinner"></span> ทดสอบ...'; btn.disabled = true; document.getElementById('conn-result').innerHTML = '';
-            google.script.run.withSuccessHandler(function(res) { btn.innerHTML = original; btn.disabled = false; document.getElementById('conn-result').innerHTML = '<div class="p-2.5 rounded-xl flex items-center gap-2 text-xs ' + (res.drive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700') + ' border border-white"><span class="w-1.5 h-1.5 rounded-full flex-shrink-0 ' + (res.drive ? 'bg-green-500' : 'bg-red-500') + '"></span>' + res.driveMsg + '</div>'; }).testConnection({ driveId: document.getElementById('setting-drive').value });
+        const notes = b.notes || b.remark || '';
+        const notesHtml = (notes && notes.trim() !== '' && notes.trim() !== '-')
+          ? `<div class="mt-1 text-xs text-amber-700 flex items-start gap-1"><span>📝</span><span>${notes}</span></div>`
+          : '';
+
+        const roomShort = b.room.includes('เกลียวเชือก')
+          ? '<span class="text-blue-700 font-bold">เกลียวเชือก</span>'
+          : '<span class="text-purple-700 font-bold">สายรุ้ง</span>';
+
+        rows += `
+        <tr class="${rowBg} hover:bg-emerald-50 transition-colors duration-100 cursor-pointer border-b border-gray-100" onclick="openModalFromId('${b.id}')">
+          <td class="px-3 py-3 text-center text-xs text-gray-400 font-medium w-8">${rowNum}</td>
+          <td class="px-3 py-3 text-sm text-gray-800 font-semibold whitespace-nowrap">${dateDisplay}</td>
+          <td class="px-3 py-3 text-center text-xs font-bold text-blue-700 whitespace-nowrap">${b.startTime}<br><span class="text-gray-400 font-normal">ถึง</span><br>${b.endTime}</td>
+          <td class="px-3 py-3 text-xs text-center">${roomShort}</td>
+          <td class="px-3 py-3 text-sm text-gray-800 max-w-[180px]">
+            <div class="font-semibold line-clamp-2 leading-snug">${b.purpose || '-'}</div>
+            ${notesHtml}
+          </td>
+          <td class="px-3 py-3 text-sm text-gray-700 whitespace-nowrap">
+            <div class="font-medium">${b.name}</div>
+            <div class="text-xs text-gray-400 mt-0.5">${b.department}</div>
+          </td>
+          <td class="px-3 py-3 text-center">${statusBadge}</td>
+        </tr>`;
+      });
+
+      const html = `
+      <div class="rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+        <div class="bg-emerald-600 px-4 py-2.5 flex items-center justify-between">
+          <span class="text-white font-bold text-sm">📋 รายการทั้งหมด ${filtered.length} รายการ</span>
+          <span class="text-emerald-100 text-xs">คลิกที่แถวเพื่อดูรายละเอียด</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm border-collapse">
+            <thead>
+              <tr class="bg-gray-100 text-gray-600 text-xs uppercase tracking-wide">
+                <th class="px-3 py-3 text-center font-bold w-8">#</th>
+                <th class="px-3 py-3 text-left font-bold whitespace-nowrap">📅 วันที่</th>
+                <th class="px-3 py-3 text-center font-bold whitespace-nowrap">⏰ เวลา</th>
+                <th class="px-3 py-3 text-center font-bold whitespace-nowrap">🏢 ห้อง</th>
+                <th class="px-3 py-3 text-left font-bold">🎯 วัตถุประสงค์</th>
+                <th class="px-3 py-3 text-left font-bold whitespace-nowrap">👤 ผู้จอง / กลุ่มงาน</th>
+                <th class="px-3 py-3 text-center font-bold whitespace-nowrap">สถานะ</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </div>`;
+
+      container.innerHTML = html;
+    }
+
+    function setupReportDropdowns(bookings) {
+        const currentYear = new Date().getFullYear();
+        let years = bookings
+          .map(b => b.date ? parseInt(b.date.split('-')[0]) : null)
+          .filter(y => y !== null);
+        years.push(currentYear);
+        let uniqueYears = [...new Set(years)].sort((a, b) => b - a);
+        
+        const prevYearForMonth = document.getElementById('reportYearForMonth').value;
+        const prevYear = document.getElementById('reportYear').value;
+        let yearOptions = uniqueYears.map(y => `<option value="${y}">${y + 543}</option>`).join('');
+        
+        document.getElementById('reportYearForMonth').innerHTML = yearOptions;
+        document.getElementById('reportYear').innerHTML = yearOptions;
+        if (prevYearForMonth && uniqueYears.includes(parseInt(prevYearForMonth))) {
+          document.getElementById('reportYearForMonth').value = prevYearForMonth;
+        }
+        if (prevYear && uniqueYears.includes(parseInt(prevYear))) {
+          document.getElementById('reportYear').value = prevYear;
+        }
+    }
+
+    function updateReportUI() {
+        const mode = document.getElementById('reportFilterMode').value;
+        document.getElementById('reportMonthPicker').classList.toggle('hidden', mode !== 'month');
+        document.getElementById('reportYearPicker').classList.toggle('hidden', mode !== 'year');
+        applyReportFilters();
+    }
+
+    function applyReportFilters() {
+        const mode = document.getElementById('reportFilterMode').value;
+        let filtered = [...globalBookings];
+        let periodLabel = "ข้อมูลทั้งหมด"; 
+        const tM = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+        if (mode === 'month') {
+            const m = parseInt(document.getElementById('reportMonth').value);
+            const y = parseInt(document.getElementById('reportYearForMonth').value);
+            periodLabel = `ประจำเดือน ${tM[m-1]} ${y + 543}`;
+            filtered = globalBookings.filter(b => {
+                if(!b.date) return false;
+                const parts = b.date.split('-');
+                return parseInt(parts[1]) === m && parseInt(parts[0]) === y;
+            });
+        } else if (mode === 'year') {
+            const y = parseInt(document.getElementById('reportYear').value);
+            periodLabel = `ประจำปี พ.ศ. ${y + 543}`;
+            filtered = globalBookings.filter(b => {
+                if(!b.date) return false;
+                return parseInt(b.date.split('-')[0]) === y;
+            });
+        } else if (mode === 'all') {
+            periodLabel = `แสดงข้อมูลการจองทั้งหมด`;
         }
 
-        function generatePromptPayPayload(id, amount) {
-            var t = id.replace(/[^0-9]/g, '');
-            if (t.length < 10) return "";
-            var tag = (t.length >= 15) ? "03" : (t.length === 13) ? "02" : "01";
-            var ppa = (tag === "01") ? '0066' + t.substring(1) : t;
-            var mid = "0016A000000677010111" + tag + String(ppa.length).padStart(2, '0') + ppa;
-            var p = "00020101021129" + String(mid.length).padStart(2, '0') + mid + "5802TH5303764";
-            if (amount > 0) { var s = parseFloat(amount).toFixed(2); p += "54" + String(s.length).padStart(2, '0') + s; }
-            p += "6304";
-            var crc = 0xFFFF;
-            for (var i = 0; i < p.length; i++) {
-                crc ^= p.charCodeAt(i) << 8;
-                for (var j = 0; j < 8; j++) { if ((crc & 0x8000) > 0) crc = (crc << 1) ^ 0x1021;
-                else crc = crc << 1; crc &= 0xFFFF; }
+        const periodEl = document.getElementById('reportPeriodText');
+        if (periodEl) periodEl.innerText = periodLabel;
+
+        renderDashboardData(filtered);
+    }
+
+    function renderDashboard(bookings) { 
+        setupReportDropdowns(bookings);
+        applyReportFilters();
+    }
+
+    function renderDashboardData(bookings) {
+      let appr = 0, pend = 0, rej = 0;
+      let rStats = {}; let dStats = {};
+      
+      bookings.forEach(b => { 
+        if (b.status === 'อนุมัติ') appr++; else if (b.status === 'ไม่อนุมัติ') rej++; else pend++; 
+        let rName = b.room.split(' ')[0]; rStats[rName] = (rStats[rName] || 0) + 1; 
+        let dName = b.department || 'ไม่ระบุ';
+        dStats[dName] = (dStats[dName] || 0) + 1;
+      });
+      document.getElementById('repTotal').innerText = bookings.length; 
+      document.getElementById('repApproved').innerText = appr; 
+      document.getElementById('repPending').innerText = pend; 
+      document.getElementById('repRejected').innerText = rej; 
+      
+      if (chartInstanceRoom) chartInstanceRoom.destroy();
+      const roomColorPalette = ['#059669','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316'];
+      const roomLabels = Object.keys(rStats);
+      const roomColors = roomLabels.map((_, i) => roomColorPalette[i % roomColorPalette.length]);
+      chartInstanceRoom = new Chart(document.getElementById('roomChart'), { 
+        type: 'bar', 
+        data: { labels: roomLabels, datasets: [{ label: 'จำนวน (ครั้ง)', data: Object.values(rStats), backgroundColor: roomColors, borderRadius: 4 }] }, 
+        options: { 
+          responsive: true, 
+          maintainAspectRatio: false, 
+          layout: { padding: { top: 25 } }, 
+          plugins: { 
+            legend: { display: false },
+            datalabels: {
+              anchor: 'end', align: 'top',
+              color: (ctx) => roomColors[ctx.dataIndex] || '#047857',
+              font: { weight: 'bold', size: 13 },
+              formatter: Math.round
             }
-            return p + crc.toString(16).toUpperCase().padStart(4, '0');
+          } 
+        } 
+      });
+
+      if (window.chartInstanceStatus) window.chartInstanceStatus.destroy();
+      let sStats = { 'อนุมัติ': appr, 'รอดำเนินการ': pend, 'ไม่อนุมัติ': rej };
+      window.chartInstanceStatus = new Chart(document.getElementById('statusChart'), { 
+        type: 'doughnut', 
+        data: { labels: Object.keys(sStats), datasets: [{ data: Object.values(sStats), backgroundColor: ['#10B981', '#F59E0B', '#EF4444'], borderWidth: 1 }] }, 
+        options: { 
+          responsive: true, 
+          maintainAspectRatio: false, 
+          plugins: { 
+            legend: { position: 'right' },
+            datalabels: {
+              color: '#ffffff', font: { weight: 'bold', size: 14 },
+              formatter: (value) => value > 0 ? value : '' 
+            }
+          } 
+        } 
+      });
+      if (chartInstanceDept) chartInstanceDept.destroy();
+      const deptColorPalette = [
+        '#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6',
+        '#06b6d4','#f97316','#84cc16','#ec4899','#14b8a6',
+        '#6366f1','#e11d48','#0ea5e9','#a3e635','#fb923c'
+      ];
+      const deptLabels = Object.keys(dStats);
+      const deptColors = deptLabels.map((_, i) => deptColorPalette[i % deptColorPalette.length]);
+
+      // คำนวณความสูงจากจำนวนกลุ่มงานจริง: แถวละ 44px + 60px สำหรับ axis/padding
+      const deptChartHeight = Math.max(80, deptLabels.length * 44 + 60);
+      const deptWrapper = document.getElementById('deptChartWrapper');
+      if (deptWrapper) deptWrapper.style.height = deptChartHeight + 'px';
+
+      chartInstanceDept = new Chart(document.getElementById('deptChart'), {
+          type: 'bar',
+          data: {
+              labels: deptLabels,
+              datasets: [{
+                label: 'จำนวนการจอง (ครั้ง)',
+                data: Object.values(dStats),
+                backgroundColor: deptColors,
+                borderRadius: 5,
+                barThickness: 18
+              }]
+          },
+          options: {
+              indexAxis: 'y',
+              responsive: true,
+              maintainAspectRatio: false,
+              layout: { padding: { right: 30 } },
+              plugins: {
+                legend: { display: false },
+                datalabels: {
+                  anchor: 'end', align: 'right',
+                  color: (ctx) => deptColors[ctx.dataIndex] || '#1d4ed8',
+                  font: { weight: 'bold', size: 12 },
+                  formatter: Math.round
+                }
+              }
+          }
+      });
+
+      // --- render report table ---
+      const tMr = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+      const sorted = [...bookings].sort((a, b) => a.date !== b.date ? a.date.localeCompare(b.date) : a.startTime.localeCompare(b.startTime));
+      const countEl = document.getElementById('reportTableCount');
+      const tbody = document.getElementById('reportTableBody');
+      if (countEl) countEl.innerText = sorted.length + ' รายการ';
+      if (tbody) {
+        if (sorted.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="7" class="text-center py-12 text-gray-400 text-sm">📭 ไม่มีข้อมูลการจองในช่วงเวลานี้</td></tr>`;
+        } else {
+          let rows = '';
+          sorted.forEach((b, i) => {
+            const p = b.date.split('-');
+            const dateDisplay = `${p[2]} ${tMr[parseInt(p[1])-1]} ${parseInt(p[0])+543}`;
+            const rowBg = i % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+            let statusBadge = '';
+            if (b.status === 'อนุมัติ') {
+              statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 whitespace-nowrap">✅ อนุมัติ</span>';
+            } else if (b.status === 'ไม่อนุมัติ') {
+              statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-red-100 text-red-700 border border-red-200 whitespace-nowrap">❌ ไม่อนุมัติ</span>';
+            } else {
+              statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-700 border border-amber-200 whitespace-nowrap">⏳ รอดำเนินการ</span>';
+            }
+            const roomShort = b.room.includes('เกลียวเชือก')
+              ? '<span class="text-blue-700 font-bold">เกลียวเชือก</span>'
+              : '<span class="text-purple-700 font-bold">สายรุ้ง</span>';
+            const notes = b.notes || b.remark || '';
+            const notesHtml = (notes && notes.trim() !== '' && notes.trim() !== '-')
+              ? `<div class="mt-1 text-xs text-amber-700 flex items-start gap-1"><span>📝</span><span>${notes}</span></div>` : '';
+            rows += `
+            <tr class="${rowBg} hover:bg-emerald-50 transition-colors duration-100 cursor-pointer border-b border-gray-100" onclick="openModalFromId('${b.id}')">
+              <td class="px-3 py-3 text-center text-xs text-gray-400 font-medium">${i+1}</td>
+              <td class="px-3 py-3 text-sm text-gray-800 font-semibold whitespace-nowrap">${dateDisplay}</td>
+              <td class="px-3 py-3 text-center text-xs font-bold text-blue-700 whitespace-nowrap">${b.startTime}<br><span class="text-gray-400 font-normal">ถึง</span><br>${b.endTime}</td>
+              <td class="px-3 py-3 text-xs text-center">${roomShort}</td>
+              <td class="px-3 py-3 text-sm text-gray-800 max-w-[180px]">
+                <div class="font-semibold line-clamp-2 leading-snug">${b.purpose || '-'}</div>
+                ${notesHtml}
+              </td>
+              <td class="px-3 py-3 text-sm text-gray-700 whitespace-nowrap">
+                <div class="font-medium">${b.name}</div>
+                <div class="text-xs text-gray-400 mt-0.5">${b.department}</div>
+              </td>
+              <td class="px-3 py-3 text-center">${statusBadge}</td>
+            </tr>`;
+          });
+          tbody.innerHTML = rows;
         }
-    </script>
+      }
+    }
+
+    function exportToCSV() {
+      let csv = "ID,วันที่,เวลาเริ่ม,เวลาสิ้นสุด,ผู้จอง,อีเมล,กลุ่มงาน,ห้องประชุม,วัตถุประสงค์,หมายเหตุ,สถานะ\n";
+      globalBookings.forEach(b => {
+        csv += [`"${b.id}"`,`"${formatThaiDate(b.date)}"`,`"${b.startTime}"`,`"${b.endTime}"`,`"${b.name}"`,`"${b.email}"`,`"${b.department}"`,`"${b.room}"`,`"${b.purpose ? b.purpose.replace(/"/g, '""') : ''}"`,`"${b.notes ? b.notes.replace(/"/g, '""') : ''}"`,`"${b.status}"`].join(",") + "\n";
+      });
+      const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' }); 
+      const url = URL.createObjectURL(blob); const link = document.createElement("a");
+      link.setAttribute("href", url); link.setAttribute("download", `รายงานการจอง_${new Date().toISOString().slice(0,10)}.csv`); 
+      document.body.appendChild(link); link.click(); document.body.removeChild(link);
+    }
+
+    function handleFormSubmit(e) {
+      e.preventDefault();
+      const btn = document.getElementById('submitBtn'); btn.disabled = true;
+      const f = { 
+        name: document.getElementById('name').value, 
+        email: document.getElementById('email').value,
+        department: document.getElementById('department').value, 
+        room: document.getElementById('room').value, 
+        date: document.getElementById('date').value, 
+        startTime: document.getElementById('startTime').value, 
+        endTime: document.getElementById('endTime').value, 
+        purpose: document.getElementById('purpose').value, 
+        notes: document.getElementById('notes').value 
+      };
+      if (currentRole !== 'admin') {
+        const selectedDate = new Date(f.date);
+        const todayDate = new Date();
+        todayDate.setHours(0, 0, 0, 0); 
+
+        if (selectedDate < todayDate) {
+           Swal.fire('ปฏิเสธการทำรายการ', 'ผู้ใช้งานทั่วไปไม่สามารถจองห้องประชุมวันที่ย้อนหลังได้ครับ', 'warning');
+           btn.disabled = false;
+           return; 
+        }
+      }
+
+      if (f.startTime >= f.endTime) { Swal.fire('ผิดพลาด', 'เวลาสิ้นสุดต้องมากกว่าเวลาเริ่ม', 'error');
+        btn.disabled = false; return;
+      } 
+      google.script.run.withSuccessHandler(res => { 
+        btn.disabled = false; 
+        if (res.success) { Swal.fire('สำเร็จ!', res.message, 'success'); document.getElementById('bookingForm').reset(); fetchAndRenderEvents(); } 
+        else Swal.fire('ล้มเหลว', res.message, 'error'); 
+      }).submitBooking(f);
+    }
+
+    function openModalFromId(id) { const b = globalBookings.find(x => x.id === id); if(b) openModalFromObj(b, id);
+    }
+
+    function openModalFromObj(props, id) { 
+      document.getElementById('modalBookingId').value = id; 
+      
+      document.getElementById('detailName').innerText = props.name;
+      document.getElementById('detailEmail').innerText = props.email || '-';
+      document.getElementById('detailDept').innerText = props.department || '-'; 
+      document.getElementById('detailRoom').innerText = props.room; 
+      document.getElementById('detailDate').innerText = formatThaiDate(props.date); 
+      document.getElementById('detailTime').innerText = `${props.startTime} - ${props.endTime} น.`;
+      document.getElementById('detailPurpose').innerText = props.purpose || '-';
+      document.getElementById('detailNotes').innerText = props.notes || 'ไม่มีหมายเหตุ';
+      const stEl = document.getElementById('detailStatus');
+      stEl.innerText = props.status;
+      stEl.className = "text-xs px-2.5 py-1 rounded-full font-bold shadow-sm " + (props.status === 'อนุมัติ' ? "bg-emerald-100 text-emerald-700" : (props.status === 'ไม่อนุมัติ' ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"));
+      
+      document.getElementById('editName').value = props.name;
+      document.getElementById('editEmail').value = props.email || '';
+      document.getElementById('editDept').value = props.department || '';
+      document.getElementById('editRoom').value = props.room;
+      
+      if (editDatePicker) editDatePicker.setDate(props.date);
+      
+      document.getElementById('editStartTime').value = props.startTime;
+      document.getElementById('editEndTime').value = props.endTime;
+      document.getElementById('editPurpose').value = props.purpose || '';
+      document.getElementById('editNotes').value = props.notes || '';
+
+      toggleEditMode(false); 
+      
+      document.getElementById('adminActionSection').classList.toggle('hidden', currentRole !== 'admin');
+      document.getElementById('detailModal').classList.remove('hidden');
+    }
+
+    function toggleEditMode(isEdit) {
+      document.getElementById('modalViewMode').classList.toggle('hidden', isEdit);
+      document.getElementById('modalEditMode').classList.toggle('hidden', !isEdit);
+      document.getElementById('btnCloseModal').classList.toggle('hidden', isEdit);
+      if (currentRole === 'admin') document.getElementById('adminActionSection').classList.toggle('hidden', isEdit);
+    }
+
+    function saveBookingEdit() {
+      const id = document.getElementById('modalBookingId').value;
+      const f = {
+        name: document.getElementById('editName').value.trim(), 
+        email: document.getElementById('editEmail').value.trim(),
+        department: document.getElementById('editDept').value, 
+        room: document.getElementById('editRoom').value,
+        date: document.getElementById('editDate').value, 
+        startTime: document.getElementById('editStartTime').value, 
+        endTime: document.getElementById('editEndTime').value,
+        purpose: document.getElementById('editPurpose').value.trim(), 
+        notes: document.getElementById('editNotes').value.trim()
+      };
+      if (!f.name || !f.email || !f.department || !f.room || !f.date || !f.startTime || !f.endTime || !f.purpose) { Swal.fire('ผิดพลาด', 'กรอกข้อมูล * ให้ครบถ้วน', 'warning');
+        return; }
+      if (f.startTime >= f.endTime) { Swal.fire('ผิดพลาด', 'เวลาไม่ถูกต้อง', 'error'); return;
+      }
+
+      Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+      google.script.run
+        .withSuccessHandler(res => {
+          if (res.success) { Swal.fire('สำเร็จ', res.message, 'success'); closeModal(); fetchAndRenderEvents(); } 
+          else Swal.fire('ล้มเหลว', res.message, 'error');
+        }).editBookingRecord(id, f, runtimeSessionKey);
+    }
+
+    function closeModal() { document.getElementById('detailModal').classList.add('hidden'); }
+
+    function handleAdminAction(status) {
+      const id = document.getElementById('modalBookingId').value;
+      Swal.fire({ title: 'ยืนยัน?', text: `เปลี่ยนสถานะเป็น "${status}" ใช่หรือไม่?`, icon: 'question', showCancelButton: true, confirmButtonColor: '#059669', confirmButtonText: 'บันทึก'
+      }).then((r) => {
+        if (r.isConfirmed) {
+          closeModal(); Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+          google.script.run.withSuccessHandler(res => {
+            if (res.success) { Swal.fire('สำเร็จ!', res.message, 'success'); fetchAndRenderEvents(); } else Swal.fire('ล้มเหลว', res.message, 'error');
+          }).updateBookingStatus(id, status, runtimeSessionKey);
+        }
+      });
+    }
+
+    function deleteBookingAction() {
+      const id = document.getElementById('modalBookingId').value;
+      Swal.fire({ title: 'ยืนยันลบ?', text: "ลบแล้วกู้คืนไม่ได้!", icon: 'warning', showCancelButton: true, confirmButtonColor: '#DC2626', confirmButtonText: 'ลบเลย'
+      }).then((r) => {
+        if (r.isConfirmed) {
+          closeModal(); Swal.fire({ title: 'กำลังลบ...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+          google.script.run.withSuccessHandler(res => {
+            if (res.success) { Swal.fire('สำเร็จ!', res.message, 'success'); fetchAndRenderEvents(); } else Swal.fire('ล้มเหลว', res.message, 'error');
+          }).deleteBookingRecord(id, runtimeSessionKey);
+        }
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+      document.getElementById('reportMonth').value = new Date().getMonth() + 1;
+
+      const flatpickrConfig = {
+        locale: "th",
+        dateFormat: "Y-m-d",
+        altInput: true,
+        altFormat: "TH",
+        formatDate: (date, formatStr, locale) => {
+          if (formatStr === "TH") {
+            const d = date.getDate();
+            const m = locale.months.longhand[date.getMonth()];
+            const y = date.getFullYear() + 543;
+            return `${d} ${m} ${y}`;
+          }
+          return flatpickr.formatDate(date, formatStr);
+        },
+        onReady: function(selectedDates, dateStr, instance) {
+          const yearInput = instance.currentYearElement;
+          if (yearInput) yearInput.value = parseInt(yearInput.value) + 543;
+        },
+        onYearChange: function(selectedDates, dateStr, instance) {
+          const yearInput = instance.currentYearElement;
+          if (yearInput) yearInput.value = parseInt(instance.currentYear) + 543;
+        }
+      };
+
+      datePicker = flatpickr("#date", flatpickrConfig);
+      editDatePicker = flatpickr("#editDate", flatpickrConfig);
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(function(count) {
+            const wrapper = document.getElementById('viewCountWrapper');
+            const display = document.getElementById('viewCountDisplay');
+            if (count !== null) {
+              display.innerText = count.toLocaleString() + ' ครั้ง';
+              wrapper.classList.remove('opacity-0');
+            }
+          })
+          .incrementAndGetViewCount();
+      }
+    });
+  </script>
 </body>
 </html>
