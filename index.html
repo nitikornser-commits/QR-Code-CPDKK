@@ -1,1170 +1,531 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ระบบจองห้องประชุม - สหกรณ์จังหวัดขอนแก่น</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
-  
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script>
+/**
+ * ระบบจองห้องประชุม - สำนักงานสหกรณ์จังหวัดขอนแก่น (เวอร์ชันรวมระบบ LINE Notification & Webhook)
+ * @author Senior Full-Stack Developer
+ */
 
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    body { font-family: 'Sarabun', sans-serif; }
-    .fc-header-toolbar { padding: 0.5rem; flex-wrap: wrap; gap: 0.5rem; }
-    .fc-button-primary { background-color: #059669 !important; border-color: #059669 !important; }
-    .fc-button-primary:hover { background-color: #047857 !important; border-color: #047857 !important; }
-    .fc-button-active { background-color: #065f46 !important; border-color: #065f46 !important; }
+const SHEETS = {
+  BOOKINGS: 'Bookings',
+  CREDENTIALS: 'Credentials',
+  SETTINGS: 'Settings' 
+};
+
+function doGet(e) {
+  const htmlTemplate = HtmlService.createTemplateFromFile('Index');
+  htmlTemplate.logoUrl = 'https://img2.pic.in.th/logo-464c730826eab72d.png'; 
+  htmlTemplate.userEmail = Session.getActiveUser().getEmail() || "ไม่ได้ล็อกอินบัญชี Google";
+  return htmlTemplate.evaluate()
+      .setTitle('ระบบจองห้องประชุม | สหกรณ์จังหวัดขอนแก่น')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+// -----------------------------------------------------------------
+// 🌟 PAGE VIEW COUNTER (CONCURRENCY SAFE)
+// -----------------------------------------------------------------
+function incrementAndGetViewCount() {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(5000);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(SHEETS.SETTINGS);
+    if (!sheet) {
+      sheet = ss.insertSheet(SHEETS.SETTINGS);
+      sheet.appendRow(['Key', 'Value']);
+      sheet.appendRow(['PageViews', 0]);
+      sheet.hideSheet();
+    }
     
-    @media print {
-      body * { visibility: hidden; }
-      #reportPrintArea, #reportPrintArea * { visibility: visible; }
-      #reportPrintArea { position: absolute; left: 0; top: 0; width: 100%; }
-      .no-print { display: none !important; }
-    }
-  </style>
-</head>
-<body class="bg-gray-50 min-h-screen text-gray-800">
-
-  <div id="loginGate" class="fixed inset-0 bg-emerald-50 flex items-center justify-center z-[100]">
-    <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-sm text-center border-t-4 border-emerald-600">
-      <div class="mb-5 flex items-center justify-center">
-           <div class="bg-emerald-100 rounded-full w-20 h-20 flex items-center justify-center text-3xl mx-auto">🏢</div>
-      </div>
-      <h2 class="text-2xl font-bold text-emerald-700 mb-2">ระบบจองห้องประชุม</h2>
-      <p class="text-gray-500 mb-6 text-xl">สำนักงานสหกรณ์จังหวัดขอนแก่น</p>
-      
-      <form onsubmit="event.preventDefault(); checkSecureLogin();">
-        <input type="password" id="systemPassword" class="w-full px-4 py-3 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-center text-lg tracking-widest" placeholder="รหัสผ่านระบบ" required>
-        <button type="submit" id="loginBtn" class="w-full bg-emerald-600 text-white py-3 rounded-md hover:bg-emerald-700 transition font-medium text-lg shadow-md">เข้าสู่ระบบ</button>
-      </form>
-    </div>
-  </div>
-
-  <div id="mainApp" class="hidden flex flex-col min-h-screen">
+    let data = sheet.getDataRange().getValues();
+    let viewRowIndex = -1;
+    let currentCount = 0;
     
-    <nav class="bg-emerald-600 text-white shadow-md px-6 py-3 flex flex-wrap justify-between items-center no-print">
-      <div class="flex items-center gap-3">
-
-        <div>
-          <h1 class="text-xl font-bold tracking-wide">ระบบจองห้องประชุม</h1>
-          <p class="text-xs text-emerald-100">สำนักงานสหกรณ์จังหวัดขอนแก่น</p>
-        </div>
-      </div>
-      <div class="flex items-center space-x-3 mt-2 sm:mt-0">
-        <span id="adminBadge" class="hidden bg-amber-400 text-amber-950 text-xs px-3 py-1.5 rounded-full font-bold shadow-sm">🔑 ผู้ดูแลระบบ</span>
-        <span id="userBadge" class="hidden bg-gray-100 text-gray-700 text-xs px-3 py-1.5 rounded-full font-bold shadow-sm">👤 ผู้ใช้งานทั่วไป</span>
-        <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white text-sm px-4 py-2 rounded-lg font-bold transition shadow-sm">ออกจากระบบ</button>
-      </div>
-    </nav>
-
-    <main class="flex-grow max-w-7xl w-full mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-      
-      <section class="lg:col-span-1 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 self-start no-print">
-        <h2 class="text-lg font-bold text-gray-900 border-b pb-3 mb-4 text-emerald-600">📝 กรอกข้อมูลการจอง</h2>
-        <form id="bookingForm" onsubmit="handleFormSubmit(event)" class="space-y-4">
-          <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1">ชื่อ-นามสกุล ผู้จอง <span class="text-red-500">*</span></label>
-            <input type="text" id="name" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
-          </div>
-          <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1">อีเมล (E-mail) <span class="text-red-500">*</span></label>
-            <input type="email" id="email" required placeholder="example@mail.com" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
-          </div>
-          <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1">กลุ่มงาน <span class="text-red-500">*</span></label>
-            <select id="department" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
-              <option value="" disabled selected>-- เลือกกลุ่มงาน --</option>
-              <option value="ฝ่ายบริหารทั่วไป">ฝ่ายบริหารทั่วไป</option>
-              <option value="กลุ่มจัดตั้งและส่งเสริมสหกรณ์">กลุ่มจัดตั้งและส่งเสริมสหกรณ์</option>
-              <option value="กลุ่มส่งเสริมและพัฒนาการบริหารการจัดการสหกรณ์">กลุ่มส่งเสริมและพัฒนาการบริหารการจัดการสหกรณ์</option>
-              <option value="กลุ่มส่งเสริมและพัฒนาธุรกิจสหกรณ์">กลุ่มส่งเสริมและพัฒนาธุรกิจสหกรณ์</option>
-              <option value="กลุ่มตรวจการสหกรณ์">กลุ่มตรวจการสหกรณ์</option>
-              <option value="กลุ่มส่งเสริมสหกรณ์ 1">กลุ่มส่งเสริมสหกรณ์ 1</option>
-              <option value="กลุ่มส่งเสริมสหกรณ์ 2">กลุ่มส่งเสริมสหกรณ์ 2</option>
-              <option value="กลุ่มส่งเสริมสหกรณ์ 3">กลุ่มส่งเสริมสหกรณ์ 3</option>
-              <option value="กลุ่มส่งเสริมสหกรณ์ 4">กลุ่มส่งเสริมสหกรณ์ 4</option>
-              <option value="กลุ่มส่งเสริมสหกรณ์ 5">กลุ่มส่งเสริมสหกรณ์ 5</option>
-              <option value="กลุ่มส่งเสริมสหกรณ์ 6">กลุ่มส่งเสริมสหกรณ์ 6</option>
-              <option value="กลุ่มส่งเสริมสหกรณ์ 7">กลุ่มส่งเสริมสหกรณ์ 7</option>
-              <option value="กลุ่มส่งเสริมสหกรณ์ 8">กลุ่มส่งเสริมสหกรณ์ 8</option>
-              <option value="นิคมสหกรณ์ดงมูล">นิคมสหกรณ์ดงมูล</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1">ห้องประชุม <span class="text-red-500">*</span></label>
-            <select id="room" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
-              <option value="" disabled selected>เลือกห้องประชุม</option>
-              <option value="ห้องประชุมเกลียวเชือก (รองรับ 33 ที่นั่ง)">ห้องประชุมเกลียวเชือก (รองรับ 33 ที่นั่ง)</option>
-              <option value="ห้องประชุมสายรุ้ง (รองรับ 9 ที่นั่ง)">ห้องประชุมสายรุ้ง (รองรับ 9 ที่นั่ง)</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1">วันที่ต้องการจอง <span class="text-red-500">*</span></label>
-            <input type="text" id="date" placeholder="เลือกวันที่จอง..." required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white cursor-pointer">
-          </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1">เวลาเริ่ม <span class="text-red-500">*</span></label>
-              <input type="time" id="startTime" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
-            </div>
-            <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1">เวลาสิ้นสุด <span class="text-red-500">*</span></label>
-              <input type="time" id="endTime" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
-            </div>
-          </div>
-          <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1">วัตถุประสงค์การใช้งาน <span class="text-red-500">*</span></label>
-            <textarea id="purpose" required rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="ระบุเรื่องประชุม"></textarea>
-          </div>
-          <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1">หมายเหตุ (ถ้ามี)</label>
-            <textarea id="notes" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="เช่น เครื่องเสียง, เบรก..."></textarea>
-          </div>
-          <button type="submit" id="submitBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-lg shadow transition">
-            ส่งคำขอจองห้องประชุม
-          </button>
-        </form>
-      </section>
-
-      <section class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col">
-        
-        <div class="flex flex-wrap border-b border-gray-200 mb-5 no-print gap-1 shrink-0">
-          <button onclick="switchView('pending')" id="tabPending" class="hidden py-2.5 px-4 text-gray-500 hover:text-amber-600 font-medium text-sm sm:text-base transition focus:outline-none items-center gap-2">
-            🔔 รออนุมัติ <span id="pendingBadgeCount" class="bg-red-500 text-white text-[11px] px-2 py-0.5 rounded-full font-bold shadow-sm">0</span>
-          </button>
-          <button onclick="switchView('calendar')" id="tabCalendar" class="py-2.5 px-4 text-emerald-600 border-b-2 border-emerald-600 font-bold text-sm sm:text-base transition focus:outline-none flex items-center gap-2">📅 ปฏิทิน</button>
-          <button onclick="switchView('list')" id="tabList" class="py-2.5 px-4 text-gray-500 hover:text-emerald-600 font-medium text-sm sm:text-base transition focus:outline-none flex items-center gap-2">📋 รายการทั้งหมด</button>
-          <button onclick="switchView('report')" id="tabReport" class="hidden py-2.5 px-4 text-gray-500 hover:text-emerald-600 font-medium text-sm sm:text-base transition focus:outline-none items-center gap-2">📊 แดชบอร์ดรายงาน</button>
-        </div>
-
-        <div id="statusLegendBar" class="mb-4 p-3 bg-gray-50 rounded-xl border border-gray-200/60 flex flex-wrap gap-4 items-center justify-start text-xs sm:text-sm font-medium text-gray-600 no-print shrink-0">
-          <span class="text-gray-400 font-semibold mr-1">💡 สถานะสี:</span>
-          <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded-full bg-[#F59E0B]"></span> รอดำเนินการ </span>
-          <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded-full bg-[#10B981]"></span> อนุมัติ </span>
-          <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded-full bg-[#EF4444]"></span> ไม่อนุมัติ </span>
-        </div>
-
-        <div id="pendingAdminView" class="hidden space-y-3 max-h-[75vh] overflow-y-auto pr-1 no-print"></div>
-
-        <div id="calendarContainer" class="no-print"><div id="calendar"></div></div>
-        
-        <div id="bookingListView" class="hidden flex-col h-[75vh] no-print">
-          <div class="bg-gray-50 p-3 sm:p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-3 mb-4 shrink-0">
-            <h2 class="text-xs sm:text-base font-bold text-gray-800 flex items-center gap-2">📋 รายการข้อมูลการจองห้องประชุม</h2>
-            <div class="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
-              <select id="listRoomFilter" onchange="renderListView()" class="w-full sm:w-auto bg-white border border-gray-300 text-gray-700 text-xs font-semibold rounded-lg focus:ring-2 focus:ring-emerald-500 block px-2.5 py-1.5 outline-none bg-white">
-                <option value="all">🏢 ทุกห้องประชุม</option>
-                <option value="ห้องประชุมเกลียวเชือก">ห้องประชุมเกลียวเชือก (33 คน)</option>
-                <option value="ห้องประชุมสายรุ้ง">ห้องประชุมสายรุ้ง (9 คน)</option>
-              </select>
-              <div class="flex items-center gap-1 bg-emerald-600 text-white rounded-lg p-1 w-full sm:w-auto justify-between sm:justify-center">
-                <button onclick="changeListMonth(-1)" class="px-2 py-1 hover:bg-emerald-700 rounded transition text-xs font-bold">◀</button>
-                <span id="listMonthDisplay" class="font-bold text-xs w-28 text-center tracking-wide">มกราคม 2567</span>
-                <button onclick="changeListMonth(1)" class="px-2 py-1 hover:bg-emerald-700 rounded transition text-xs font-bold">▶</button>
-              </div>
-            </div>
-          </div>
-          <div id="listItemsContainer" class="flex-grow space-y-4 overflow-y-auto pr-1 pb-6"></div>
-        </div>
-
-        <div id="reportContainer" class="hidden">
-          <div id="reportPrintArea">
-            <div class="flex flex-wrap justify-between items-start mb-6">
-              <div class="flex flex-col">
-                <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">📊 แดชบอร์ดสรุปผลการจอง</h2>
-                <span id="reportPeriodText" class="text-sm font-semibold text-emerald-600 mt-1">กำลังโหลดข้อมูล...</span>
-              </div>
-              <div class="flex gap-2 no-print">
-                <button onclick="exportToCSV()" class="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1.5 rounded shadow flex items-center gap-1"><span class="text-lg">📥</span> ส่งออก Excel</button>
-                <button onclick="window.print()" class="bg-gray-600 hover:bg-gray-700 text-white text-sm px-3 py-1.5 rounded shadow flex items-center gap-1"><span class="text-lg">🖨️</span> พิมพ์รายงาน</button>
-              </div>
-            </div>
-
-            <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6 no-print">
-              <div class="flex flex-col md:flex-row items-center gap-4">
-                <div class="flex items-center gap-2">
-                  <span class="text-gray-600 font-bold">📅 เลือกดูข้อมูล:</span>
-                  <select id="reportFilterMode" onchange="updateReportUI()" class="bg-white border border-gray-300 text-gray-700 text-sm rounded-lg p-2 outline-none focus:ring-2 focus:ring-emerald-500">
-                    <option value="all">ทั้งหมด</option>
-                    <option value="month" selected>รายเดือน</option>
-                    <option value="year">รายปี</option>
-                  </select>
-                </div>
-                
-                <div id="reportMonthPicker" class="flex items-center gap-2 transition-all">
-                  <select id="reportMonth" onchange="applyReportFilters()" class="bg-white border border-gray-300 text-gray-700 text-sm rounded-lg p-2 outline-none">
-                    <option value="1">มกราคม</option>  <option value="2">กุมภาพันธ์</option>
-                    <option value="3">มีนาคม</option>    <option value="4">เมษายน</option>
-                    <option value="5">พฤษภาคม</option>   <option value="6">มิถุนายน</option>
-                    <option value="7">กรกฎาคม</option>   <option value="8">สิงหาคม</option>
-                    <option value="9">กันยายน</option>   <option value="10">ตุลาคม</option>
-                    <option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option>
-                  </select>
-                  <select id="reportYearForMonth" onchange="applyReportFilters()" class="bg-white border border-gray-300 text-gray-700 text-sm rounded-lg p-2 outline-none"></select>
-                </div>
-
-                <div id="reportYearPicker" class="hidden flex items-center gap-2 transition-all">
-                  <select id="reportYear" onchange="applyReportFilters()" class="bg-white border border-gray-300 text-gray-700 text-sm rounded-lg p-2 outline-none"></select>
-                </div>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl text-center shadow-sm">
-                <div class="text-blue-500 text-sm font-bold mb-1">การจองทั้งหมด</div>
-                <div id="repTotal" class="text-3xl font-extrabold text-blue-700">0</div>
-              </div>
-              <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-center shadow-sm">
-                <div class="text-emerald-600 text-sm font-bold mb-1">อนุมัติแล้ว</div>
-                <div id="repApproved" class="text-3xl font-extrabold text-emerald-700">0</div>
-              </div>
-              <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl text-center shadow-sm">
-                <div class="text-amber-600 text-sm font-bold mb-1">รอดำเนินการ</div>
-                <div id="repPending" class="text-3xl font-extrabold text-amber-700">0</div>
-              </div>
-              <div class="bg-red-50 border border-red-200 p-4 rounded-xl text-center shadow-sm">
-                <div class="text-red-500 text-sm font-bold mb-1">ไม่อนุมัติ</div>
-                <div id="repRejected" class="text-3xl font-extrabold text-red-700">0</div>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm">
-                <h3 class="text-sm font-bold text-gray-700 mb-3 text-center">สถิติการใช้งานแต่ละห้องประชุม</h3>
-                <div class="relative h-48 w-full"><canvas id="roomChart"></canvas></div>
-              </div>
-              <div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm">
-                <h3 class="text-sm font-bold text-gray-700 mb-3 text-center">สัดส่วนสถานะการจอง</h3>
-                <div class="relative h-48 w-full"><canvas id="statusChart"></canvas></div>
-              </div>
-            </div>
-
-            <div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm mb-6">
-              <h3 class="text-sm font-bold text-gray-700 mb-3 text-center">สถิติการจองแยกตามกลุ่มงาน</h3>
-              <div class="relative h-64 w-full"><canvas id="deptChart"></canvas></div>
-            </div>
-            
-            <div class="bg-white border border-gray-200 p-4 sm:p-6 rounded-xl shadow-sm mb-6">
-              <h3 class="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">📝 สรุปหมายเหตุและความต้องการเพิ่มเติม <span class="text-sm font-normal text-gray-500">(ประจำช่วงเวลาที่เลือก)</span></h3>
-              <div id="reportNotesContainer" class="space-y-3 max-h-[400px] overflow-y-auto pr-2"></div>
-            </div>
-             
-          </div>
-      </section>
-    </main>
-
-    <footer class="w-full bg-white border-t border-gray-200 py-6 text-center text-xs sm:text-sm text-gray-500 no-print">
-      <div class="max-w-7xl mx-auto px-6 flex flex-col items-center gap-2">
-        <p class="mt-1 font-medium text-gray-600">พัฒนาโดย <span class="text-emerald-700 font-bold">นายนิธิกร เสริมปรุงสุข </span> นักวิชาการสหกรณ์ เวอร์ชัน 2.0 สงวนลิขสิทธิ์ © 2026</p>
-        
-        <div id="viewCountWrapper" class="mt-2 flex items-center justify-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100 shadow-sm transition-opacity duration-500 opacity-0">
-          <span class="text-lg">👁️</span>
-          <span class="font-medium text-gray-600">จำนวนผู้เยี่ยมชม:</span>
-          <span id="viewCountDisplay" class="font-bold text-emerald-600 tracking-wide">...</span>
-        </div>
-      </div>
-    </footer>
-  </div>
-
-  <div id="detailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 no-print">
-    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-       <h3 class="text-xl font-bold text-gray-900 border-b pb-2 mb-4">🔍 รายละเอียดคำขอจอง</h3>
-       <input type="hidden" id="modalBookingId">
-       
-       <div id="modalViewMode" class="space-y-3 text-sm text-gray-700">
-         <div><span class="font-semibold text-gray-400">ผู้ขอจอง:</span> <span id="detailName" class="font-semibold text-gray-900 ml-1"></span></div>
-         <div><span class="font-semibold text-gray-400">อีเมล:</span> <span id="detailEmail" class="font-semibold text-gray-900 ml-1"></span></div>
-         <div><span class="font-semibold text-gray-400">กลุ่มงาน:</span> <span id="detailDept" class="font-semibold text-gray-900 ml-1"></span></div>
-         <div><span class="font-semibold text-gray-400">ห้องประชุม:</span> <span id="detailRoom" class="font-semibold text-emerald-700 ml-1"></span></div>
-         <div><span class="font-semibold text-gray-400">วันที่จอง:</span> <span id="detailDate" class="font-semibold text-gray-900 ml-1"></span></div>
-         <div><span class="font-semibold text-gray-400">ช่วงเวลา:</span> <span id="detailTime" class="font-semibold text-gray-900 ml-1"></span></div>
-         <div>
-            <span class="font-semibold text-gray-400">วัตถุประสงค์:</span>
-            <p id="detailPurpose" class="mt-1 bg-gray-50 p-2.5 rounded-lg text-gray-800 border border-gray-100 break-words"></p>
-         </div>
-         <div>
-            <span class="font-semibold text-gray-400">หมายเหตุเพิ่มเติม:</span>
-            <p id="detailNotes" class="mt-1 bg-amber-50/60 p-2.5 rounded-lg text-amber-900 border border-amber-100 break-words italic font-medium"></p>
-         </div>
-         <div class="flex items-center gap-2 mt-2">
-            <span class="font-semibold text-gray-400">สถานะ:</span> 
-            <span id="detailStatus" class="text-xs px-2.5 py-1 rounded-full font-bold shadow-sm"></span>
-         </div>
-       </div>
-
-       <div id="modalEditMode" class="space-y-3 text-sm text-gray-700 hidden">
-         <div>
-           <label class="block text-xs font-semibold text-gray-500 mb-1">ชื่อ-นามสกุล ผู้จอง <span class="text-red-500">*</span></label>
-           <input type="text" id="editName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
-         </div>
-         <div>
-           <label class="block text-xs font-semibold text-gray-500 mb-1">อีเมล (E-mail) <span class="text-red-500">*</span></label>
-           <input type="email" id="editEmail" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
-         </div>
-         <div>
-           <label class="block text-xs font-semibold text-gray-500 mb-1">กลุ่มงาน <span class="text-red-500">*</span></label>
-           <select id="editDept" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
-              <option value="ฝ่ายบริหารทั่วไป">ฝ่ายบริหารทั่วไป</option>
-              <option value="กลุ่มจัดตั้งและส่งเสริมสหกรณ์">กลุ่มจัดตั้งและส่งเสริมสหกรณ์</option>
-              <option value="กลุ่มส่งเสริมและพัฒนาการบริหารการจัดการสหกรณ์">กลุ่มส่งเสริมและพัฒนาการบริหารการจัดการสหกรณ์</option>
-              <option value="กลุ่มส่งเสริมและพัฒนาธุรกิจสหกรณ์">กลุ่มส่งเสริมและพัฒนาธุรกิจสหกรณ์</option>
-              <option value="กลุ่มตรวจการสหกรณ์">กลุ่มตรวจการสหกรณ์</option>
-              <option value="กลุ่มส่งเสริมสหกรณ์ 1">กลุ่มส่งเสริมสหกรณ์ 1</option>
-              <option value="กลุ่มส่งเสริมสหกรณ์ 2">กลุ่มส่งเสริมสหกรณ์ 2</option>
-              <option value="กลุ่มส่งเสริมสหกรณ์ 3">กลุ่มส่งเสริมสหกรณ์ 3</option>
-              <option value="กลุ่มส่งเสริมสหกรณ์ 4">กลุ่มส่งเสริมสหกรณ์ 4</option>
-              <option value="กลุ่มส่งเสริมสหกรณ์ 5">กลุ่มส่งเสริมสหกรณ์ 5</option>
-              <option value="กลุ่มส่งเสริมสหกรณ์ 6">กลุ่มส่งเสริมสหกรณ์ 6</option>
-              <option value="กลุ่มส่งเสริมสหกรณ์ 7">กลุ่มส่งเสริมสหกรณ์ 7</option>
-              <option value="กลุ่มส่งเสริมสหกรณ์ 8">กลุ่มส่งเสริมสหกรณ์ 8</option>
-              <option value="นิคมสหกรณ์ดงมูล">นิคมสหกรณ์ดงมูล</option>
-           </select>
-         </div>
-         <div>
-           <label class="block text-xs font-semibold text-gray-500 mb-1">ห้องประชุม <span class="text-red-500">*</span></label>
-           <select id="editRoom" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
-             <option value="ห้องประชุมเกลียวเชือก (รองรับ 33 ที่นั่ง)">ห้องประชุมเกลียวเชือก (รองรับ 33 ที่นั่ง)</option>
-             <option value="ห้องประชุมสายรุ้ง (รองรับ 9 ที่นั่ง)">ห้องประชุมสายรุ้ง (รองรับ 9 ที่นั่ง)</option>
-           </select>
-         </div>
-         <div>
-           <label class="block text-xs font-semibold text-gray-500 mb-1">วันที่ต้องการจอง <span class="text-red-500">*</span></label>
-           <input type="text" id="editDate" placeholder="เลือกวันที่..." required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white cursor-pointer">
-         </div>
-         <div class="grid grid-cols-2 gap-3">
-           <div>
-             <label class="block text-xs font-semibold text-gray-500 mb-1">เวลาเริ่ม <span class="text-red-500">*</span></label>
-             <input type="time" id="editStartTime" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
-           </div>
-           <div>
-             <label class="block text-xs font-semibold text-gray-500 mb-1">เวลาสิ้นสุด <span class="text-red-500">*</span></label>
-             <input type="time" id="editEndTime" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
-           </div>
-         </div>
-         <div>
-           <label class="block text-xs font-semibold text-gray-500 mb-1">วัตถุประสงค์การใช้งาน <span class="text-red-500">*</span></label>
-           <textarea id="editPurpose" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"></textarea>
-         </div>
-         <div>
-           <label class="block text-xs font-semibold text-gray-500 mb-1">หมายเหตุ (ถ้ามี)</label>
-           <textarea id="editNotes" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"></textarea>
-         </div>
-         <div class="flex gap-2 pt-2">
-           <button onclick="saveBookingEdit()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-bold shadow-md transition">💾 บันทึกแก้ไข</button>
-           <button onclick="toggleEditMode(false)" class="w-full bg-gray-300 hover:bg-gray-400 text-gray-800 py-2 rounded-lg font-medium transition">❌ ยกเลิก</button>
-         </div>
-       </div>
-       
-       <div id="adminActionSection" class="mt-6 flex flex-col gap-3 hidden">
-          <div class="flex w-full gap-2">
-            <button onclick="handleAdminAction('อนุมัติ')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-lg font-bold shadow-md transition">✅ อนุมัติ</button>
-            <button onclick="handleAdminAction('ไม่อนุมัติ')" class="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg font-bold shadow-md transition">❌ ไม่อนุมัติ</button>
-          </div>
-          <div class="flex w-full gap-2">
-            <button onclick="toggleEditMode(true)" class="w-full bg-amber-500 hover:bg-amber-600 text-white py-2.5 rounded-lg font-bold shadow-md transition flex items-center justify-center gap-1">✏️ แก้ไข</button>
-            <button onclick="deleteBookingAction()" class="w-full sm:w-auto bg-gray-600 hover:bg-gray-800 text-white py-2.5 px-4 rounded-lg font-bold shadow-md transition flex items-center justify-center gap-1">🗑️ ลบ</button>
-          </div>
-       </div>
-       <button onclick="closeModal()" id="btnCloseModal" class="w-full mt-3 bg-gray-100 hover:bg-gray-200 text-gray-800 py-2.5 rounded-lg font-medium transition">ปิดหน้าต่าง</button>
-    </div>
-  </div>
-
-  <script>
-    Chart.register(ChartDataLabels);
-    let calendar;
-    let datePicker; 
-    let editDatePicker;
-
-    let currentRole = 'guest';
-    let runtimeSessionKey = ''; 
-    let globalBookings = [];
-    let currentListDate = new Date();
-    let chartInstanceRoom = null;
-    let chartInstanceStatus = null;
-    let chartInstanceDept = null;
-
-    // ===== กำหนดรหัสผ่านสำหรับ GitHub Pages (กรณีไม่มี Google Apps Script) =====
-    const LOCAL_ADMIN_PASSWORD = 'admin1234';  // <-- เปลี่ยนรหัสผู้ดูแลระบบได้ที่นี่
-    const LOCAL_USER_PASSWORD  = 'user1234';   // <-- เปลี่ยนรหัสผู้ใช้งานทั่วไปได้ที่นี่
-    // =========================================================================
-
-    function checkSecureLogin() {
-      const pwd = document.getElementById('systemPassword').value;
-      const loginBtn = document.getElementById('loginBtn');
-      loginBtn.disabled = true;
-      loginBtn.innerText = 'กำลังตรวจสอบ...';
-
-      // ตรวจสอบว่าทำงานบน Google Apps Script หรือไม่
-      if (typeof google !== 'undefined' && google.script && google.script.run) {
-        // === โหมด Google Apps Script (ปกติ) ===
-        google.script.run
-          .withSuccessHandler(res => {
-            loginBtn.disabled = false; loginBtn.innerText = 'เข้าสู่ระบบ';
-            if (res.success) {
-              currentRole = res.role; runtimeSessionKey = pwd;
-              unlockSystem();
-            } else {
-              Swal.fire({ icon: 'error', title: 'การเข้าถึงล้มเหลว', text: res.message });
-              document.getElementById('systemPassword').value = '';
-            }
-          })
-          .withFailureHandler(err => {
-            loginBtn.disabled = false; loginBtn.innerText = 'เข้าสู่ระบบ';
-            Swal.fire('Error', err.message, 'error');
-          }).verifySystemPassword(pwd);
-      } else {
-        // === โหมด GitHub Pages / Static Hosting (ใช้รหัสผ่านแบบ Local) ===
-        setTimeout(() => {
-          loginBtn.disabled = false; loginBtn.innerText = 'เข้าสู่ระบบ';
-          if (pwd === LOCAL_ADMIN_PASSWORD) {
-            currentRole = 'admin'; runtimeSessionKey = pwd;
-            unlockSystem();
-          } else if (pwd === LOCAL_USER_PASSWORD) {
-            currentRole = 'user'; runtimeSessionKey = pwd;
-            unlockSystem();
-          } else {
-            Swal.fire({ icon: 'error', title: 'การเข้าถึงล้มเหลว', text: 'รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง' });
-            document.getElementById('systemPassword').value = '';
-          }
-        }, 400);
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === 'PageViews') {
+        viewRowIndex = i + 1;
+        currentCount = Number(data[i][1]) || 0;
+        break;
       }
     }
-
-    function unlockSystem() {
-      document.getElementById('loginGate').classList.add('hidden');
-      document.getElementById('mainApp').classList.remove('hidden');
-      
-      const tabPending = document.getElementById('tabPending');
-      const tabReport = document.getElementById('tabReport');
-      
-      if (currentRole === 'admin') {
-        document.getElementById('adminBadge').classList.remove('hidden');
-        document.getElementById('userBadge').classList.add('hidden');
-        tabReport.classList.remove('hidden'); tabReport.classList.add('flex');
-        if (datePicker) datePicker.set('minDate', null);
-      } else {
-        document.getElementById('adminBadge').classList.add('hidden');
-        document.getElementById('userBadge').classList.remove('hidden');
-        tabReport.classList.add('hidden'); tabReport.classList.remove('flex');
-        if (datePicker) datePicker.set('minDate', 'today');
-      }
-      
-      tabPending.classList.remove('hidden'); 
-      tabPending.classList.add('flex');
-      if (currentRole !== 'admin' && !document.getElementById('reportContainer').classList.contains('hidden')) {
-        switchView('calendar');
-      }
-
-      initCalendar(); 
-      fetchAndRenderEvents();
+    
+    if (viewRowIndex === -1) {
+      sheet.appendRow(['PageViews', 1]);
+      return 1;
+    } else {
+      const newCount = currentCount + 1;
+      sheet.getRange(viewRowIndex, 2).setValue(newCount);
+      return newCount;
     }
+  } catch (e) {
+    console.error("View Count Error: " + e.message);
+    return null;
+  } finally {
+    lock.releaseLock();
+  }
+}
 
-    function logout() {
-      currentRole = 'guest';
-      runtimeSessionKey = '';
-      document.getElementById('systemPassword').value = '';
-      document.getElementById('loginGate').classList.remove('hidden'); 
-      document.getElementById('mainApp').classList.add('hidden');
-      document.getElementById('tabReport').classList.add('hidden');
-      document.getElementById('tabReport').classList.remove('flex');
-    }
+// -----------------------------------------------------------------
+// 📅 UTILITY FUNCTIONS
+// -----------------------------------------------------------------
+function parseTime(rawTime) {
+  if (!rawTime) return "00:00";
+  if (rawTime instanceof Date) return Utilities.formatDate(rawTime, Session.getScriptTimeZone(), "HH:mm");
+  let strTime = String(rawTime).trim();
+  let match = strTime.match(/^(\d{1,2}):(\d{2})/);
+  if (match) return String(match[1]).padStart(2, '0') + ':' + match[2];
+  return "00:00";
+}
 
-    function switchView(viewType) {
-      document.getElementById('pendingAdminView').classList.add('hidden');
-      document.getElementById('calendarContainer').classList.add('hidden');
-      document.getElementById('bookingListView').classList.add('hidden');
-      document.getElementById('bookingListView').classList.remove('flex');
-      document.getElementById('reportContainer').classList.add('hidden');
-      document.getElementById('statusLegendBar').classList.add('hidden');
-      const tPen = document.getElementById('tabPending');
-      const tCal = document.getElementById('tabCalendar');
-      const tList = document.getElementById('tabList');
-      const tRep = document.getElementById('tabReport');
-      const baseClass = "py-2.5 px-4 text-gray-500 hover:text-emerald-600 font-medium text-sm sm:text-base transition focus:outline-none flex items-center gap-2";
-      tCal.className = tList.className = baseClass;
-      tPen.className = "py-2.5 px-4 text-gray-500 hover:text-amber-600 font-medium text-sm sm:text-base transition focus:outline-none flex items-center gap-2";
-      tRep.className = currentRole === 'admin' ? baseClass : "hidden";
+function timeToMinutes(timeStr) {
+  if (!timeStr) return 0;
+  const parts = timeStr.split(':');
+  if (parts.length < 2) return 0;
+  return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+}
 
-      const activeClass = "py-2.5 px-4 text-emerald-600 border-b-2 border-emerald-600 font-bold text-sm sm:text-base transition focus:outline-none flex items-center gap-2";
-      const activePendingClass = "py-2.5 px-4 text-amber-600 border-b-2 border-amber-500 font-bold text-sm sm:text-base transition focus:outline-none flex items-center gap-2";
-      if (viewType === 'pending') {
-        document.getElementById('pendingAdminView').classList.remove('hidden'); 
-        tPen.className = activePendingClass;
-      } else if (viewType === 'calendar') {
-        document.getElementById('calendarContainer').classList.remove('hidden'); 
-        document.getElementById('statusLegendBar').classList.remove('hidden');
-        tCal.className = activeClass;
-        if (calendar) calendar.updateSize();
-      } else if (viewType === 'list') {
-        document.getElementById('bookingListView').classList.remove('hidden'); 
-        document.getElementById('bookingListView').classList.add('flex'); 
-        document.getElementById('statusLegendBar').classList.remove('hidden');
-        tList.className = activeClass;
-        renderListView(); 
-      } else if (viewType === 'report' && currentRole === 'admin') { 
-        document.getElementById('reportContainer').classList.remove('hidden');
-        tRep.className = activeClass;
+// -----------------------------------------------------------------
+// 🗄️ DATABASE INITIALIZATION
+// -----------------------------------------------------------------
+function initDatabase() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss.getSheetByName(SHEETS.BOOKINGS)) {
+    const sheet = ss.insertSheet(SHEETS.BOOKINGS);
+    sheet.appendRow(['BookingID', 'Timestamp', 'Name', 'Department', 'Room', 'Date', 'StartTime', 'EndTime', 'Purpose', 'Status', 'Email', 'Notes']);
+    sheet.setFrozenRows(1);
+    sheet.getRange("A1:L1").setFontWeight("bold").setBackground("#f3f4f6");
+  }
+  if (!ss.getSheetByName(SHEETS.CREDENTIALS)) {
+    const credSheet = ss.insertSheet(SHEETS.CREDENTIALS);
+    credSheet.appendRow(['Role', 'Password']);
+    credSheet.appendRow(['admin', 'admin1234']);   // รหัสผู้ดูแลระบบ
+    credSheet.appendRow(['user', 'user1234']);    // รหัสผู้ใช้ทั่วไป
+    credSheet.setFrozenRows(1);
+    credSheet.hideSheet();
+  }
+}
+
+// -----------------------------------------------------------------
+// 🔐 AUTHENTICATION
+// -----------------------------------------------------------------
+function verifySystemPassword(enteredPassword) {
+  try {
+    initDatabase();
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.CREDENTIALS);
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      const role = String(data[i][0]).trim().toLowerCase();
+      const storedPwd = String(data[i][1]).trim();
+      if (enteredPassword === storedPwd) {
+        // normalize role: ถ้าไม่ใช่ admin ให้ถือว่าเป็น user
+        const normalizedRole = (role === 'admin') ? 'admin' : 'user';
+        return { success: true, role: normalizedRole };
       }
     }
+    return { success: false, message: 'รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง' };
+  } catch (e) {
+    return { success: false, message: 'ระบบขัดข้อง: ' + e.message };
+  }
+}
 
-    function initCalendar() {
-      const el = document.getElementById('calendar');
-      if (!el) return;
-      calendar = new FullCalendar.Calendar(el, {
-        initialView: 'dayGridMonth',
-        headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' },
-        locale: 'th',
-        eventClick: function(info) { openModalFromObj(info.event.extendedProps, info.event.id); },
-        height: 'auto'
-      });
-      calendar.render();
-    }
-
-    // ===== Helper: บันทึก/โหลดข้อมูลจอง (สำหรับ GitHub Pages) =====
-    function ghSaveBookings(bookings) {
-      try { localStorage.setItem('gh_bookings', JSON.stringify(bookings)); } catch(e) {}
-    }
-    function ghLoadBookings() {
-      try { const s = localStorage.getItem('gh_bookings'); return s ? JSON.parse(s) : []; } catch(e) { return []; }
-    }
-    function ghNextId() {
-      return 'BK' + Date.now();
-    }
-
-    function fetchAndRenderEvents() {
-      if (!calendar) return;
-      calendar.removeAllEvents();
-
-      function processBookings(bookings) {
-        globalBookings = bookings;
-        renderListView();
-        if (currentRole === 'admin') { renderDashboard(bookings); }
-        renderPendingAdmin(bookings);
-        bookings.forEach(b => {
-          let color = '#F59E0B';
-          if (b.status === 'อนุมัติ') color = '#10B981';
-          if (b.status === 'ไม่อนุมัติ') color = '#EF4444';
-          calendar.addEvent({
-            id: b.id, title: `${b.room.split(' ')[0]} - ${b.name}`,
-            start: `${b.date}T${b.startTime}`, end: `${b.date}T${b.endTime}`,
-            backgroundColor: color, borderColor: color, extendedProps: b
-          });
-        });
-      }
-
-      if (typeof google !== 'undefined' && google.script && google.script.run) {
-        google.script.run.withSuccessHandler(processBookings).getBookings();
-      } else {
-        processBookings(ghLoadBookings());
-      }
-    }
-
-    function formatThaiDate(dStr) {
-      if(!dStr) return ''; const p = dStr.split('-');
-      return `${p[2]}/${p[1]}/${parseInt(p[0]) + 543}`;
-    }
-
-    function renderPendingAdmin(bookings) {
-      const pendingItems = bookings.filter(b => b.status === 'รอดำเนินการ');
-      const countBadge = document.getElementById('pendingBadgeCount');
-      if(countBadge) countBadge.innerText = pendingItems.length;
-
-      const container = document.getElementById('pendingAdminView');
-      if (pendingItems.length === 0) {
-        container.innerHTML = `<div class="text-center py-16 text-gray-400 font-medium bg-white rounded-xl border border-gray-100 shadow-sm">🎉 ไม่มีรายการรออนุมัติค้างในระบบ</div>`;
-        return;
-      }
-
-      let html = '';
-      pendingItems.sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(b => {
-         let actionButtons = '';
-         if (currentRole === 'admin') {
-             actionButtons = `
-               <div class="flex flex-wrap gap-2 md:flex-col md:w-32 justify-center">
-                 <button onclick="inlineAdminAction('${b.id}', 'อนุมัติ')" class="w-full flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-sm font-bold shadow-sm transition">✅ อนุมัติ</button>
-                 <button onclick="inlineAdminAction('${b.id}', 'ไม่อนุมัติ')" class="w-full flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-bold shadow-sm transition">❌ ไม่อนุมัติ</button>
-                 <div class="w-full flex gap-2">
-                   <button onclick="inlineEditAction('${b.id}')" class="w-full bg-amber-500 hover:bg-amber-600 text-white px-2 py-1.5 rounded-lg text-xs font-bold shadow-sm transition">✏️ แก้ไข</button>
-                   <button onclick="inlineDeleteAction('${b.id}')" class="w-full bg-gray-600 hover:bg-gray-700 text-white px-2 py-1.5 rounded-lg text-xs font-bold shadow-sm transition">🗑️ ลบ</button>
-                 </div>
-               </div>`;
-         } else {
-             actionButtons = `
-               <div class="flex flex-col md:w-32 justify-center items-end">
-                 <span class="bg-amber-100 text-amber-800 border border-amber-200 px-3 py-2 rounded-lg text-sm font-bold shadow-sm w-full text-center">⏳ รอดำเนินการ</span>
-               </div>`;
-         }
-
-         html += `
-         <div class="bg-white rounded-xl border-l-4 border-l-amber-500 border-t border-r border-b border-gray-200 shadow-sm p-4 hover:shadow-md transition">
-            <div class="flex flex-col md:flex-row justify-between md:items-center gap-4">
-               <div class="flex-grow">
-                 <div class="flex items-center gap-2 mb-1.5">
-                   <h4 class="font-bold text-gray-900 text-base md:text-lg">${b.room}</h4>
-                 </div>
-                 <p class="text-base font-semibold text-emerald-700">📅 ${formatThaiDate(b.date)} | ⏰ ${b.startTime} - ${b.endTime} น.</p>
-                 <p class="text-base text-gray-500 mt-1.5 bg-gray-50 p-2 rounded border border-gray-100">🎯 <span class="font-base">:</span> ${b.purpose}</p>
-                 ${b.notes ? `<p class="text-base text-amber-700 mt-1 bg-amber-50 p-2 rounded border border-amber-100 italic">📝 <span class="font-bold ">หมายเหตุ:<span class="font-medium"> ${b.notes}</p>` : ''}
-                 <p class="text-base text-gray-700 mt-1">👤 <span class="font-medium">${b.name}</span> (${b.department})</p>
-                 <p class="text-sm text-gray-500 mt-1">📧 ${b.email || 'ไม่ระบุอีเมล'}</p>
-               </div>
-               ${actionButtons}
-            </div>
-         </div>
-         `;
-      });
-      container.innerHTML = html;
-    }
-
-    function inlineAdminAction(id, status) {
-      Swal.fire({ title: 'ยืนยัน?', text: `ต้องการเปลี่ยนสถานะเป็น "${status}" ใช่หรือไม่?`, icon: 'question', showCancelButton: true, confirmButtonColor: '#059669', confirmButtonText: 'บันทึกสถานะ'
-      }).then((r) => {
-        if (r.isConfirmed) {
-          Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
-          if (typeof google !== 'undefined' && google.script && google.script.run) {
-            google.script.run.withSuccessHandler(res => {
-              if (res.success) { Swal.fire('สำเร็จ!', res.message, 'success'); fetchAndRenderEvents(); }
-              else Swal.fire('ล้มเหลว', res.message, 'error');
-            }).updateBookingStatus(id, status, runtimeSessionKey);
-          } else {
-            const bookings = ghLoadBookings();
-            const idx = bookings.findIndex(b => b.id === id);
-            if (idx !== -1) { bookings[idx].status = status; ghSaveBookings(bookings); }
-            Swal.fire('สำเร็จ!', `เปลี่ยนสถานะเป็น "${status}" เรียบร้อยแล้ว (โหมดตัวอย่าง)`, 'success');
-            fetchAndRenderEvents();
-          }
-        }
-      });
-    }
-
-    function inlineDeleteAction(id) {
-      Swal.fire({ title: 'ยืนยันลบ?', text: "ลบแล้วกู้คืนไม่ได้!", icon: 'warning', showCancelButton: true, confirmButtonColor: '#DC2626', confirmButtonText: 'ลบทิ้งถาวร'
-      }).then((r) => {
-        if (r.isConfirmed) {
-          Swal.fire({ title: 'กำลังลบ...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
-          if (typeof google !== 'undefined' && google.script && google.script.run) {
-            google.script.run.withSuccessHandler(res => {
-              if (res.success) { Swal.fire('สำเร็จ!', res.message, 'success'); fetchAndRenderEvents(); }
-              else Swal.fire('ล้มเหลว', res.message, 'error');
-            }).deleteBookingRecord(id, runtimeSessionKey);
-          } else {
-            let bookings = ghLoadBookings();
-            bookings = bookings.filter(b => b.id !== id);
-            ghSaveBookings(bookings);
-            Swal.fire('สำเร็จ!', 'ลบรายการเรียบร้อยแล้ว (โหมดตัวอย่าง)', 'success');
-            fetchAndRenderEvents();
-          }
-        }
-      });
-    }
-
-    function inlineEditAction(id) {
-      openModalFromId(id);
-      toggleEditMode(true);
-    }
-
-    function changeListMonth(offset) {
-      currentListDate.setMonth(currentListDate.getMonth() + offset);
-      renderListView();
-    }
-
-    function renderListView() {
-      const container = document.getElementById('listItemsContainer');
-      if (!container) return;
-      const tM = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
-      const targetYear = currentListDate.getFullYear();
-      const targetMonth = currentListDate.getMonth() + 1;
+// -----------------------------------------------------------------
+// 📋 BOOKING OPERATIONS
+// -----------------------------------------------------------------
+function getBookings() {
+  try {
+    initDatabase();
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.BOOKINGS);
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) return [];
+    
+    const bookings = [];
+    const scriptTimeZone = Session.getScriptTimeZone();
+    
+    for (let i = 1; i < data.length; i++) {
+      if (!data[i][0]) continue;
       
-      document.getElementById('listMonthDisplay').innerText = `${tM[targetMonth-1]} ${targetYear + 543}`;
-      const roomFilter = document.getElementById('listRoomFilter').value;
-      const filtered = globalBookings.filter(b => {
-        if (!b.date) return false;
-        const [y, m, d] = b.date.split('-');
-        const isSameMonth = (parseInt(y) === targetYear) && (parseInt(m) === targetMonth);
-        const isSameRoom = (roomFilter === 'all') || b.room.includes(roomFilter);
-        return isSameMonth && isSameRoom;
-      });
-      if (filtered.length === 0) {
-        container.innerHTML = `<div class="text-center py-16 text-gray-400 font-medium bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col items-center justify-center gap-3">
-            <span class="text-5xl">📭</span> 
-            <span class="text-lg">ไม่มีข้อมูลการจองห้องประชุมในเดือนนี้</span>
-        </div>`;
-        return;
-      }
-
-      filtered.sort((a, b) => b.date !== a.date ? b.date.localeCompare(a.date) : b.startTime.localeCompare(a.startTime));
-      const grp = {};
-      filtered.forEach(b => {
-        const dk = b.date;
-        if (!grp[dk]) {
-           const p = dk.split('-');
-           grp[dk] = { short: `${p[2]} ${tM[parseInt(p[1])-1]} ${parseInt(p[0])+543}`, items: [] };
-        }
-        grp[dk].items.push(b);
-      });
-      let html = '<div class="space-y-6">';
+      let bookingDate = (data[i][5] instanceof Date) ? Utilities.formatDate(data[i][5], scriptTimeZone, "yyyy-MM-dd") : String(data[i][5]).split('T')[0];
       
-      Object.keys(grp).sort().reverse().forEach(dk => {
-        html += `
-        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-            <div class="bg-gray-50/80 border-b border-gray-200 px-5 py-3 flex items-center gap-2">
-                <span class="text-xl">📅</span>
-                <span class="text-gray-800 font-bold text-base">วันที่ ${grp[dk].short}</span>
-                <span class="ml-auto bg-gray-200 text-gray-600 text-xs font-bold px-2.5 py-1 rounded-full">${grp[dk].items.length} รายการ</span>
-            </div>
-            <div class="p-4 sm:p-5 flex flex-col gap-3">
-        `;
-        
-        grp[dk].items.forEach(b => {
-          let statusBadge = ''; let borderLeftColor = ''; let bgHover = '';
-          if (b.status === 'อนุมัติ') {
-              statusBadge = '<span class="px-3 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">✅ อนุมัติ</span>';
-              borderLeftColor = 'border-emerald-500';
-              bgHover = 'hover:border-emerald-300 hover:ring-1 hover:ring-emerald-100';
-          } else if (b.status === 'ไม่อนุมัติ') {
-              statusBadge = '<span class="px-3 py-1 text-xs font-bold rounded-full bg-red-100 text-red-700 border border-red-200">❌ ไม่อนุมัติ</span>';
-              borderLeftColor = 'border-red-500'; bgHover = 'hover:border-red-300 hover:ring-1 hover:ring-red-100';
-          } else {
-              statusBadge = '<span class="px-3 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-700 border border-amber-200">⏳ รอดำเนินการ</span>';
-              borderLeftColor = 'border-amber-400'; bgHover = 'hover:border-amber-300 hover:ring-1 hover:ring-amber-100';
-          }
-
-          let notes = b.notes || b.remark || '';
-          let remarkHtml = '';
-          if (notes && notes.trim() !== '' && notes.trim() !== '-') {
-              remarkHtml = `
-              <div class="mt-3 text-[11px] sm:text-xs text-gray-600 bg-amber-50/60 px-3 py-2 rounded-lg border border-amber-100 flex items-start gap-1.5 w-full">
-                  <span class="text-amber-500">📝</span> 
-                  <span class="line-clamp-2 leading-relaxed"><span class="font-bold text-gray-700">หมายเหตุ:</span> ${notes}</span>
-              </div>`;
-          }
-
-          html += `
-          <div class="bg-white border border-gray-200 border-l-4 ${borderLeftColor} rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${bgHover}" onclick="openModalFromId('${b.id}')">
-              <div class="flex-grow w-full">
-                  <div class="flex flex-wrap items-center gap-2 mb-2">
-                      <span class="text-[11px] sm:text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md flex items-center gap-1 border border-blue-100">⏰ ${b.startTime} - ${b.endTime} น.</span>
-                      <span class="text-[11px] sm:text-xs font-semibold text-gray-600 bg-gray-100 px-2 py-1 rounded-md flex items-center gap-1 border border-gray-200"><span class="text-emerald-600">🏢</span> ${b.room}</span>
-                  </div>
-                  <h3 class="text-base sm:text-lg font-bold text-gray-800 leading-tight mb-2 line-clamp-2">${b.purpose || 'ไม่ระบุวัตถุประสงค์'}</h3>
-                  <div class="text-xs sm:text-sm text-gray-500 flex flex-wrap items-center gap-x-3 gap-y-1">
-                      <span class="flex items-center gap-1.5"><span class="text-blue-500 text-base">👤</span> <span class="font-medium text-gray-700">${b.name}</span> <span class="text-gray-400">(${b.department})</span></span>
-                  </div>
-                  ${remarkHtml}
-              </div>
-              <div class="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-3 shrink-0 border-t sm:border-t-0 border-gray-100 pt-3 sm:pt-0 mt-2 sm:mt-0">
-                  ${statusBadge}
-                  <div class="text-[11px] sm:text-xs font-semibold text-gray-500 hover:text-gray-800 transition flex items-center gap-1">คลิกดูรายละเอียด ➔</div>
-              </div>
-          </div>`;
-        });
-        html += `</div></div>`;
+      bookings.push({
+        id: String(data[i][0]),
+        name: data[i][2] ? String(data[i][2]) : 'ไม่ระบุชื่อ',
+        department: data[i][3] ? String(data[i][3]) : '',
+        room: data[i][4] ? String(data[i][4]) : 'ไม่ระบุห้อง',
+        date: bookingDate,
+        startTime: parseTime(data[i][6]),
+        endTime: parseTime(data[i][7]),
+        purpose: data[i][8] ? String(data[i][8]) : '',
+        status: data[i][9] || 'รอดำเนินการ',
+        email: data[i][10] ? String(data[i][10]) : '', 
+        notes: data[i][11] ? String(data[i][11]) : ''
       });
-      html += '</div>';
-      container.innerHTML = html;
     }
+    return bookings;
+  } catch (error) {
+    console.error("Get Bookings Error: " + error.message);
+    return [];
+  }
+}
 
-    function setupReportDropdowns(bookings) {
-        const currentYear = new Date().getFullYear();
-        let years = bookings
-          .map(b => b.date ? parseInt(b.date.split('-')[0]) : null)
-          .filter(y => y !== null);
-        years.push(currentYear);
-        let uniqueYears = [...new Set(years)].sort((a, b) => b - a);
-        
-        const prevYearForMonth = document.getElementById('reportYearForMonth').value;
-        const prevYear = document.getElementById('reportYear').value;
-        let yearOptions = uniqueYears.map(y => `<option value="${y}">${y + 543}</option>`).join('');
-        
-        document.getElementById('reportYearForMonth').innerHTML = yearOptions;
-        document.getElementById('reportYear').innerHTML = yearOptions;
-        if (prevYearForMonth && uniqueYears.includes(parseInt(prevYearForMonth))) {
-          document.getElementById('reportYearForMonth').value = prevYearForMonth;
-        }
-        if (prevYear && uniqueYears.includes(parseInt(prevYear))) {
-          document.getElementById('reportYear').value = prevYear;
-        }
-    }
-
-    function updateReportUI() {
-        const mode = document.getElementById('reportFilterMode').value;
-        document.getElementById('reportMonthPicker').classList.toggle('hidden', mode !== 'month');
-        document.getElementById('reportYearPicker').classList.toggle('hidden', mode !== 'year');
-        applyReportFilters();
-    }
-
-    function applyReportFilters() {
-        const mode = document.getElementById('reportFilterMode').value;
-        let filtered = [...globalBookings];
-        let periodLabel = "ข้อมูลทั้งหมด"; 
-        const tM = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
-        if (mode === 'month') {
-            const m = parseInt(document.getElementById('reportMonth').value);
-            const y = parseInt(document.getElementById('reportYearForMonth').value);
-            periodLabel = `ประจำเดือน ${tM[m-1]} ${y + 543}`;
-            filtered = globalBookings.filter(b => {
-                if(!b.date) return false;
-                const parts = b.date.split('-');
-                return parseInt(parts[1]) === m && parseInt(parts[0]) === y;
-            });
-        } else if (mode === 'year') {
-            const y = parseInt(document.getElementById('reportYear').value);
-            periodLabel = `ประจำปี พ.ศ. ${y + 543}`;
-            filtered = globalBookings.filter(b => {
-                if(!b.date) return false;
-                return parseInt(b.date.split('-')[0]) === y;
-            });
-        } else if (mode === 'all') {
-            periodLabel = `แสดงข้อมูลการจองทั้งหมด`;
-        }
-
-        const periodEl = document.getElementById('reportPeriodText');
-        if (periodEl) periodEl.innerText = periodLabel;
-
-        renderDashboardData(filtered);
-    }
-
-    function renderDashboard(bookings) { 
-        setupReportDropdowns(bookings);
-        applyReportFilters();
-    }
-
-    function renderDashboardData(bookings) {
-      let appr = 0, pend = 0, rej = 0;
-      let rStats = {}; let dStats = {};
-      
-      bookings.forEach(b => { 
-        if (b.status === 'อนุมัติ') appr++; else if (b.status === 'ไม่อนุมัติ') rej++; else pend++; 
-        let rName = b.room.split(' ')[0]; rStats[rName] = (rStats[rName] || 0) + 1; 
-        let dName = b.department || 'ไม่ระบุ';
-        dStats[dName] = (dStats[dName] || 0) + 1;
-      });
-      document.getElementById('repTotal').innerText = bookings.length; 
-      document.getElementById('repApproved').innerText = appr; 
-      document.getElementById('repPending').innerText = pend; 
-      document.getElementById('repRejected').innerText = rej; 
-      
-      if (chartInstanceRoom) chartInstanceRoom.destroy();
-      chartInstanceRoom = new Chart(document.getElementById('roomChart'), { 
-        type: 'bar', 
-        data: { labels: Object.keys(rStats), datasets: [{ label: 'จำนวน (ครั้ง)', data: Object.values(rStats), backgroundColor: '#059669', borderRadius: 4 }] }, 
-        options: { 
-          responsive: true, 
-          maintainAspectRatio: false, 
-          layout: { padding: { top: 25 } }, 
-          plugins: { 
-            legend: { display: false },
-            datalabels: {
-              anchor: 'end', align: 'top', color: '#047857', font: { weight: 'bold', size: 13 },
-              formatter: Math.round
-            }
-          } 
-        } 
-      });
-
-      if (window.chartInstanceStatus) window.chartInstanceStatus.destroy();
-      let sStats = { 'อนุมัติ': appr, 'รอดำเนินการ': pend, 'ไม่อนุมัติ': rej };
-      window.chartInstanceStatus = new Chart(document.getElementById('statusChart'), { 
-        type: 'doughnut', 
-        data: { labels: Object.keys(sStats), datasets: [{ data: Object.values(sStats), backgroundColor: ['#10B981', '#F59E0B', '#EF4444'], borderWidth: 1 }] }, 
-        options: { 
-          responsive: true, 
-          maintainAspectRatio: false, 
-          plugins: { 
-            legend: { position: 'right' },
-            datalabels: {
-              color: '#ffffff', font: { weight: 'bold', size: 14 },
-              formatter: (value) => value > 0 ? value : '' 
-            }
-          } 
-        } 
-      });
-      if (chartInstanceDept) chartInstanceDept.destroy();
-      chartInstanceDept = new Chart(document.getElementById('deptChart'), {
-          type: 'bar',
-          data: {
-              labels: Object.keys(dStats),
-              datasets: [{ label: 'จำนวนการจอง (ครั้ง)', data: Object.values(dStats), backgroundColor: '#3b82f6', borderRadius: 5 }]
-          },
-          options: {
-              indexAxis: 'y',
-              responsive: true,
-              maintainAspectRatio: false,
-              layout: { padding: { right: 30 } }, 
-              plugins: { 
-                legend: { display: false },
-                datalabels: {
-                  anchor: 'end', align: 'right', color: '#1d4ed8', font: { weight: 'bold', size: 12 },
-                  formatter: Math.round
-                }
-              }
-          }
-      });
-
-      const notesContainer = document.getElementById('reportNotesContainer');
-      let notesHtml = '';
-      
-      const bookingsWithNotes = bookings.filter(b => b.notes && b.notes.trim() !== '' && b.notes.trim() !== '-');
-      if (bookingsWithNotes.length === 0) {
-          notesHtml = `<div class="text-center py-8 text-gray-400 bg-gray-50 rounded-lg border border-gray-100 text-sm">🎉 ไม่มีการระบุหมายเหตุในช่วงเวลานี้</div>`;
-      } else {
-          bookingsWithNotes.sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(b => {
-              
-              let statusColor = b.status === 'อนุมัติ' ? 'text-emerald-700 bg-emerald-100 border-emerald-200' : 
-                               (b.status === 'ไม่อนุมัติ' ? 'text-red-700 bg-red-100 border-red-200' : 'text-amber-700 bg-amber-100 border-amber-200');
-              
-              notesHtml += `
-              <div class="p-3 sm:p-4 border border-gray-200 rounded-lg bg-white shadow-sm hover:shadow-md transition">
-            
-                  <p class="text-sm text-gray-800 bg-amber-50 p-2.5 rounded-lg border border-amber-100 italic mb-2">
-                      <span class="font-bold text-amber-600">หมายเหตุ:</span> ${b.notes}
-                  </p>
-                  
-              </div>
-              `;
-          });
-      }
-      notesContainer.innerHTML = notesHtml;
-    }
-
-    function exportToCSV() {
-      let csv = "ID,วันที่,เวลาเริ่ม,เวลาสิ้นสุด,ผู้จอง,อีเมล,กลุ่มงาน,ห้องประชุม,วัตถุประสงค์,หมายเหตุ,สถานะ\n";
-      globalBookings.forEach(b => {
-        csv += [`"${b.id}"`,`"${formatThaiDate(b.date)}"`,`"${b.startTime}"`,`"${b.endTime}"`,`"${b.name}"`,`"${b.email}"`,`"${b.department}"`,`"${b.room}"`,`"${b.purpose ? b.purpose.replace(/"/g, '""') : ''}"`,`"${b.notes ? b.notes.replace(/"/g, '""') : ''}"`,`"${b.status}"`].join(",") + "\n";
-      });
-      const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' }); 
-      const url = URL.createObjectURL(blob); const link = document.createElement("a");
-      link.setAttribute("href", url); link.setAttribute("download", `รายงานการจอง_${new Date().toISOString().slice(0,10)}.csv`); 
-      document.body.appendChild(link); link.click(); document.body.removeChild(link);
-    }
-
-    function handleFormSubmit(e) {
-      e.preventDefault();
-      const btn = document.getElementById('submitBtn'); btn.disabled = true;
-      const f = { 
-        name: document.getElementById('name').value, 
-        email: document.getElementById('email').value,
-        department: document.getElementById('department').value, 
-        room: document.getElementById('room').value, 
-        date: document.getElementById('date').value, 
-        startTime: document.getElementById('startTime').value, 
-        endTime: document.getElementById('endTime').value, 
-        purpose: document.getElementById('purpose').value, 
-        notes: document.getElementById('notes').value 
-      };
-      if (currentRole !== 'admin') {
-        const selectedDate = new Date(f.date);
-        const todayDate = new Date();
-        todayDate.setHours(0, 0, 0, 0); 
-
-        if (selectedDate < todayDate) {
-           Swal.fire('ปฏิเสธการทำรายการ', 'ผู้ใช้งานทั่วไปไม่สามารถจองห้องประชุมวันที่ย้อนหลังได้ครับ', 'warning');
-           btn.disabled = false;
-           return; 
-        }
-      }
-
-      if (f.startTime >= f.endTime) { Swal.fire('ผิดพลาด', 'เวลาสิ้นสุดต้องมากกว่าเวลาเริ่ม', 'error');
-        btn.disabled = false; return;
-      } 
-      if (typeof google !== 'undefined' && google.script && google.script.run) {
-        google.script.run.withSuccessHandler(res => {
-          btn.disabled = false;
-          if (res.success) { Swal.fire('สำเร็จ!', res.message, 'success'); document.getElementById('bookingForm').reset(); fetchAndRenderEvents(); }
-          else Swal.fire('ล้มเหลว', res.message, 'error');
-        }).submitBooking(f);
-      } else {
-        // โหมด GitHub Pages
-        const bookings = ghLoadBookings();
-        const newEntry = Object.assign({ id: ghNextId(), status: 'รอดำเนินการ' }, f);
-        bookings.push(newEntry);
-        ghSaveBookings(bookings);
-        btn.disabled = false;
-        Swal.fire('สำเร็จ!', 'ส่งคำขอจองเรียบร้อยแล้ว (โหมดตัวอย่าง)', 'success');
-        document.getElementById('bookingForm').reset();
-        fetchAndRenderEvents();
+function submitBooking(formData) {
+  try {
+    initDatabase();
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.BOOKINGS);
+    const data = sheet.getDataRange().getValues();
+    
+    // ตรวจสอบห้องและเวลาซ้อนกัน
+    for (let i = 1; i < data.length; i++) {
+      if (!data[i][0] || data[i][9] === 'ไม่อนุมัติ') continue;
+      let existRoom = String(data[i][4]);
+      let existDate = (data[i][5] instanceof Date) ? Utilities.formatDate(data[i][5], Session.getScriptTimeZone(), "yyyy-MM-dd") : String(data[i][5]).split('T')[0];
+      if (existRoom === formData.room && existDate === formData.date) {
+        const s1 = timeToMinutes(formData.startTime), e1 = timeToMinutes(formData.endTime);
+        const s2 = timeToMinutes(parseTime(data[i][6])), e2 = timeToMinutes(parseTime(data[i][7]));
+        if (s1 < e2 && e1 > s2) throw new Error("ห้องประชุมนี้ถูกจองในช่วงเวลาดังกล่าวแล้ว กรุณาตรวจสอบอีกครั้ง");
       }
     }
+    
+    const bookingId = 'BK-' + new Date().getTime() + Math.floor(Math.random() * 1000);
+    const finalEmail = formData.email || Session.getActiveUser().getEmail() || "Anonymous";
+    
+    sheet.appendRow([
+      bookingId,
+      new Date(),
+      formData.name,
+      formData.department,
+      formData.room,
+      formData.date,
+      formData.startTime,
+      formData.endTime,
+      formData.purpose,
+      'รอดำเนินการ',
+      finalEmail,
+      formData.notes || '' 
+    ]);
 
-    function openModalFromId(id) { const b = globalBookings.find(x => x.id === id); if(b) openModalFromObj(b, id);
-    }
-
-    function openModalFromObj(props, id) { 
-      document.getElementById('modalBookingId').value = id; 
-      
-      document.getElementById('detailName').innerText = props.name;
-      document.getElementById('detailEmail').innerText = props.email || '-';
-      document.getElementById('detailDept').innerText = props.department || '-'; 
-      document.getElementById('detailRoom').innerText = props.room; 
-      document.getElementById('detailDate').innerText = formatThaiDate(props.date); 
-      document.getElementById('detailTime').innerText = `${props.startTime} - ${props.endTime} น.`;
-      document.getElementById('detailPurpose').innerText = props.purpose || '-';
-      document.getElementById('detailNotes').innerText = props.notes || 'ไม่มีหมายเหตุ';
-      const stEl = document.getElementById('detailStatus');
-      stEl.innerText = props.status;
-      stEl.className = "text-xs px-2.5 py-1 rounded-full font-bold shadow-sm " + (props.status === 'อนุมัติ' ? "bg-emerald-100 text-emerald-700" : (props.status === 'ไม่อนุมัติ' ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"));
-      
-      document.getElementById('editName').value = props.name;
-      document.getElementById('editEmail').value = props.email || '';
-      document.getElementById('editDept').value = props.department || '';
-      document.getElementById('editRoom').value = props.room;
-      
-      if (editDatePicker) editDatePicker.setDate(props.date);
-      
-      document.getElementById('editStartTime').value = props.startTime;
-      document.getElementById('editEndTime').value = props.endTime;
-      document.getElementById('editPurpose').value = props.purpose || '';
-      document.getElementById('editNotes').value = props.notes || '';
-
-      toggleEditMode(false); 
-      
-      document.getElementById('adminActionSection').classList.toggle('hidden', currentRole !== 'admin');
-      document.getElementById('detailModal').classList.remove('hidden');
-    }
-
-    function toggleEditMode(isEdit) {
-      document.getElementById('modalViewMode').classList.toggle('hidden', isEdit);
-      document.getElementById('modalEditMode').classList.toggle('hidden', !isEdit);
-      document.getElementById('btnCloseModal').classList.toggle('hidden', isEdit);
-      if (currentRole === 'admin') document.getElementById('adminActionSection').classList.toggle('hidden', isEdit);
-    }
-
-    function saveBookingEdit() {
-      const id = document.getElementById('modalBookingId').value;
-      const f = {
-        name: document.getElementById('editName').value.trim(), 
-        email: document.getElementById('editEmail').value.trim(),
-        department: document.getElementById('editDept').value, 
-        room: document.getElementById('editRoom').value,
-        date: document.getElementById('editDate').value, 
-        startTime: document.getElementById('editStartTime').value, 
-        endTime: document.getElementById('editEndTime').value,
-        purpose: document.getElementById('editPurpose').value.trim(), 
-        notes: document.getElementById('editNotes').value.trim()
-      };
-      if (!f.name || !f.email || !f.department || !f.room || !f.date || !f.startTime || !f.endTime || !f.purpose) { Swal.fire('ผิดพลาด', 'กรอกข้อมูล * ให้ครบถ้วน', 'warning');
-        return; }
-      if (f.startTime >= f.endTime) { Swal.fire('ผิดพลาด', 'เวลาไม่ถูกต้อง', 'error'); return;
-      }
-
-      Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
-      if (typeof google !== 'undefined' && google.script && google.script.run) {
-        google.script.run
-          .withSuccessHandler(res => {
-            if (res.success) { Swal.fire('สำเร็จ', res.message, 'success'); closeModal(); fetchAndRenderEvents(); }
-            else Swal.fire('ล้มเหลว', res.message, 'error');
-          }).editBookingRecord(id, f, runtimeSessionKey);
-      } else {
-        // โหมด GitHub Pages
-        const bookings = ghLoadBookings();
-        const idx = bookings.findIndex(b => b.id === id);
-        if (idx !== -1) { bookings[idx] = Object.assign(bookings[idx], f); ghSaveBookings(bookings); }
-        Swal.fire('สำเร็จ', 'บันทึกการแก้ไขเรียบร้อยแล้ว (โหมดตัวอย่าง)', 'success');
-        closeModal(); fetchAndRenderEvents();
-      }
-    }
-
-    function closeModal() { document.getElementById('detailModal').classList.add('hidden'); }
-
-    function handleAdminAction(status) {
-      const id = document.getElementById('modalBookingId').value;
-      Swal.fire({ title: 'ยืนยัน?', text: `เปลี่ยนสถานะเป็น "${status}" ใช่หรือไม่?`, icon: 'question', showCancelButton: true, confirmButtonColor: '#059669', confirmButtonText: 'บันทึก'
-      }).then((r) => {
-        if (r.isConfirmed) {
-          closeModal(); Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
-          if (typeof google !== 'undefined' && google.script && google.script.run) {
-            google.script.run.withSuccessHandler(res => {
-              if (res.success) { Swal.fire('สำเร็จ!', res.message, 'success'); fetchAndRenderEvents(); } else Swal.fire('ล้มเหลว', res.message, 'error');
-            }).updateBookingStatus(id, status, runtimeSessionKey);
-          } else {
-            const bookings = ghLoadBookings();
-            const idx = bookings.findIndex(b => b.id === id);
-            if (idx !== -1) { bookings[idx].status = status; ghSaveBookings(bookings); }
-            Swal.fire('สำเร็จ!', `เปลี่ยนสถานะเป็น "${status}" เรียบร้อยแล้ว (โหมดตัวอย่าง)`, 'success');
-            fetchAndRenderEvents();
-          }
-        }
-      });
-    }
-
-    function deleteBookingAction() {
-      const id = document.getElementById('modalBookingId').value;
-      Swal.fire({ title: 'ยืนยันลบ?', text: "ลบแล้วกู้คืนไม่ได้!", icon: 'warning', showCancelButton: true, confirmButtonColor: '#DC2626', confirmButtonText: 'ลบเลย'
-      }).then((r) => {
-        if (r.isConfirmed) {
-          closeModal(); Swal.fire({ title: 'กำลังลบ...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
-          if (typeof google !== 'undefined' && google.script && google.script.run) {
-            google.script.run.withSuccessHandler(res => {
-              if (res.success) { Swal.fire('สำเร็จ!', res.message, 'success'); fetchAndRenderEvents(); } else Swal.fire('ล้มเหลว', res.message, 'error');
-            }).deleteBookingRecord(id, runtimeSessionKey);
-          } else {
-            let bookings = ghLoadBookings();
-            bookings = bookings.filter(b => b.id !== id);
-            ghSaveBookings(bookings);
-            Swal.fire('สำเร็จ!', 'ลบรายการเรียบร้อยแล้ว (โหมดตัวอย่าง)', 'success');
-            fetchAndRenderEvents();
-          }
-        }
-      });
-    }
-
-    document.addEventListener("DOMContentLoaded", function() {
-      document.getElementById('reportMonth').value = new Date().getMonth() + 1;
-
-      const flatpickrConfig = {
-        locale: "th",
-        dateFormat: "Y-m-d",
-        altInput: true,
-        altFormat: "TH",
-        formatDate: (date, formatStr, locale) => {
-          if (formatStr === "TH") {
-            const d = date.getDate();
-            const m = locale.months.longhand[date.getMonth()];
-            const y = date.getFullYear() + 543;
-            return `${d} ${m} ${y}`;
-          }
-          return flatpickr.formatDate(date, formatStr);
-        },
-        onReady: function(selectedDates, dateStr, instance) {
-          const yearInput = instance.currentYearElement;
-          if (yearInput) yearInput.value = parseInt(yearInput.value) + 543;
-        },
-        onYearChange: function(selectedDates, dateStr, instance) {
-          const yearInput = instance.currentYearElement;
-          if (yearInput) yearInput.value = parseInt(instance.currentYear) + 543;
-        }
-      };
-
-      datePicker = flatpickr("#date", flatpickrConfig);
-      editDatePicker = flatpickr("#editDate", flatpickrConfig);
-      if (typeof google !== 'undefined' && google.script && google.script.run) {
-        google.script.run
-          .withSuccessHandler(function(count) {
-            const wrapper = document.getElementById('viewCountWrapper');
-            const display = document.getElementById('viewCountDisplay');
-            if (count !== null) {
-              display.innerText = count.toLocaleString() + ' ครั้ง';
-              wrapper.classList.remove('opacity-0');
-            }
-          })
-          .incrementAndGetViewCount();
-      } else {
-        // โหมด GitHub Pages — นับ view จาก localStorage
-        try {
-          let vc = parseInt(localStorage.getItem('gh_viewcount') || '0') + 1;
-          localStorage.setItem('gh_viewcount', vc);
-          document.getElementById('viewCountDisplay').innerText = vc.toLocaleString() + ' ครั้ง';
-          document.getElementById('viewCountWrapper').classList.remove('opacity-0');
-        } catch(e) {}
-      }
+    // 1. ส่งอีเมลแจ้งเตือนการจองใหม่
+    sendEmailNotification("NEW_BOOKING", {
+      bookingId: bookingId,
+      name: formData.name,
+      room: formData.room,
+      date: formData.date,
+      startTime: formData.startTime,
+      endTime: formData.endTime,
+      purpose: formData.purpose,
+      email: finalEmail
     });
-  </script>
-</body>
-</html>
+
+    // 🚀 2. ส่งแจ้งเตือนภายนอกระบบ (LINE & Webhook)
+    sendLineNotification(bookingId, formData);
+
+    return { success: true, message: 'ส่งคำขอจองสำเร็จ! รอดำเนินการอนุมัติจากแอดมิน' };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+}
+
+function updateBookingStatus(id, newStatus, currentSessionPassword) {
+  const auth = verifySystemPassword(currentSessionPassword);
+  if (!auth.success || auth.role !== 'admin') {
+    return { success: false, message: 'ปฏิเสธการเข้าถึง: คุณไม่มีสิทธิ์แอดมิน' };
+  }
+  
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.BOOKINGS);
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]) === String(id)) {
+        const prevStatus = String(data[i][9] || 'รอดำเนินการ');
+        sheet.getRange(i + 1, 10).setValue(newStatus);
+        
+        const bookingInfo = {
+          bookingId: String(data[i][0]),
+          name: String(data[i][2]),
+          room: String(data[i][4]),
+          date: data[i][5],
+          startTime: parseTime(data[i][6]),
+          endTime: parseTime(data[i][7]),
+          purpose: data[i][8] ? String(data[i][8]) : 'ไม่ระบุ',
+          status: newStatus,
+          email: String(data[i][10] || '')
+        };
+
+        // แจ้งเตือนอีเมลเมื่อสถานะเปลี่ยน
+        sendEmailNotification("STATUS_UPDATE", bookingInfo);
+
+        // แจ้งเตือน LINE เมื่ออนุมัติหรือไม่อนุมัติ
+        if (newStatus === 'อนุมัติ' || newStatus === 'ไม่อนุมัติ') {
+          sendLineStatusNotification(bookingInfo);
+        }
+
+        return { success: true, message: `เปลี่ยนสถานะเป็น "${newStatus}" เรียบร้อยแล้ว!` };
+      }
+    }
+    return { success: false, message: 'ไม่พบข้อมูลการจอง' };
+  } catch (e) {
+    return { success: false, message: e.message };
+  }
+}
+
+function deleteBookingRecord(id, currentSessionPassword) {
+  const auth = verifySystemPassword(currentSessionPassword);
+  if (!auth.success || auth.role !== 'admin') {
+    return { success: false, message: 'ปฏิเสธการเข้าถึง: คุณไม่มีสิทธิ์แอดมิน' };
+  }
+  
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.BOOKINGS);
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]) === String(id)) {
+        sheet.deleteRow(i + 1);
+        return { success: true, message: 'ลบข้อมูลเรียบร้อยแล้ว!' };
+      }
+    }
+    return { success: false, message: 'ไม่พบข้อมูลการจอง' };
+  } catch (e) {
+    return { success: false, message: e.message };
+  }
+}
+
+function editBookingRecord(id, formData, currentSessionPassword) {
+  const auth = verifySystemPassword(currentSessionPassword);
+  if (!auth.success || auth.role !== 'admin') {
+    return { success: false, message: 'ปฏิเสธการเข้าถึง: คุณไม่มีสิทธิ์แอดมิน' };
+  }
+  
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.BOOKINGS);
+    const data = sheet.getDataRange().getValues();
+    
+    for (let i = 1; i < data.length; i++) {
+      if (!data[i][0] || String(data[i][0]) === String(id) || data[i][9] === 'ไม่อนุมัติ') continue;
+      
+      let existRoom = String(data[i][4]);
+      let existDate = (data[i][5] instanceof Date) ? Utilities.formatDate(data[i][5], Session.getScriptTimeZone(), "yyyy-MM-dd") : String(data[i][5]).split('T')[0];
+      if (existRoom === formData.room && existDate === formData.date) {
+        const s1 = timeToMinutes(formData.startTime), e1 = timeToMinutes(formData.endTime);
+        const s2 = timeToMinutes(parseTime(data[i][6])), e2 = timeToMinutes(parseTime(data[i][7]));
+        if (s1 < e2 && e1 > s2) {
+          return { success: false, message: "ห้องประชุมนี้ถูกจองในช่วงเวลาดังกล่าวแล้ว ชนกับรายการอื่น" };
+        }
+      }
+    }
+    
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]) === String(id)) {
+        const row = i + 1;
+        sheet.getRange(row, 3).setValue(formData.name);
+        sheet.getRange(row, 4).setValue(formData.department);
+        sheet.getRange(row, 5).setValue(formData.room);
+        sheet.getRange(row, 6).setValue(formData.date);
+        sheet.getRange(row, 7).setValue(formData.startTime);
+        sheet.getRange(row, 8).setValue(formData.endTime);
+        sheet.getRange(row, 9).setValue(formData.purpose);
+        sheet.getRange(row, 11).setValue(formData.email); 
+        sheet.getRange(row, 12).setValue(formData.notes);
+        return { success: true, message: 'อัปเดตข้อมูลการจองสำเร็จ!' };
+      }
+    }
+    return { success: false, message: 'ไม่พบข้อมูลการจอง' };
+  } catch (e) {
+    return { success: false, message: e.message };
+  }
+}
+
+// -----------------------------------------------------------------
+// 📧 EMAIL NOTIFICATION SYSTEM 
+// -----------------------------------------------------------------
+function sendEmailNotification(type, data) {
+  try {
+    const userEmail = data.email;
+    if (!userEmail || userEmail === "Anonymous" || userEmail === "ไม่ได้ล็อกอินบัญชี Google") {
+      return; 
+    }
+
+    let subject = "";
+    let htmlBody = "";
+    const dateStr = Utilities.formatDate(new Date(data.date), Session.getScriptTimeZone(), "dd/MM/yyyy");
+
+    if (type === "NEW_BOOKING") {
+      subject = `[ระบบจองห้องประชุม] ยืนยันคำขอจองห้องประชุม - ${data.room}`;
+      htmlBody = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+          <div style="background-color: #3b82f6; padding: 20px; text-align: center; color: white;">
+            <h2 style="margin: 0;">รับเรื่องคำขอจองห้องประชุมเรียบร้อย</h2>
+          </div>
+          <div style="padding: 20px; color: #333;">
+            <p>เรียนคุณ <strong>${data.name}</strong>,</p>
+            <p>ระบบได้รับคำขอจองห้องประชุมของคุณแล้ว ขณะนี้อยู่ในสถานะ <span style="color: #eab308; font-weight: bold;">[รอดำเนินการ]</span> โดยมีรายละเอียดดังนี้:</p>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+              <tr><td style="padding: 8px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>รหัสการจอง</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${data.bookingId}</td></tr>
+              <tr><td style="padding: 8px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>ห้องประชุม</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${data.room}</td></tr>
+              <tr><td style="padding: 8px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>วันที่</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${dateStr}</td></tr>
+              <tr><td style="padding: 8px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>เวลา</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${data.startTime} - ${data.endTime}</td></tr>
+              <tr><td style="padding: 8px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>หัวข้อ/วัตถุประสงค์</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${data.purpose}</td></tr>
+            </table>
+            <p style="margin-top: 20px;">โปรดรอการอนุมัติจากผู้ดูแลระบบ หากได้รับการอนุมัติแล้วระบบจะแจ้งให้ท่านทราบอีกครั้ง</p>
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="font-size: 12px; color: #888; text-align: center;">อีเมลฉบับนี้ส่งจากระบบอัตโนมัติ กรุณาอย่าตอบกลับ</p>
+          </div>
+        </div>
+      `;
+    } else if (type === "STATUS_UPDATE") {
+      const statusColor = data.status === 'อนุมัติ' ? '#22c55e' : '#ef4444'; 
+      subject = `[ระบบจองห้องประชุม] อัปเดตสถานะการจอง - ${data.status}`;
+      htmlBody = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+          <div style="background-color: ${statusColor}; padding: 20px; text-align: center; color: white;">
+            <h2 style="margin: 0;">คำขอจองห้องประชุมของคุณได้รับการ <br/> ${data.status}</h2>
+          </div>
+          <div style="padding: 20px; color: #333;">
+            <p>เรียนคุณ <strong>${data.name}</strong>,</p>
+            <p>ผู้ดูแลระบบได้ทำการอัปเดตสถานะคำขอจองห้องประชุมของคุณเป็น <strong style="color: ${statusColor};">${data.status}</strong> แล้ว</p>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+              <tr><td style="padding: 8px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>รหัสการจอง</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${data.bookingId}</td></tr>
+              <tr><td style="padding: 8px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>ห้องประชุม</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${data.room}</td></tr>
+              <tr><td style="padding: 8px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>วันที่</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${dateStr}</td></tr>
+              <tr><td style="padding: 8px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>เวลา</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${data.startTime} - ${data.endTime}</td></tr>
+              <tr><td style="padding: 8px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>หัวข้อ/วัตถุประสงค์</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${data.purpose}</td></tr>
+            </table>
+            <p style="margin-top: 20px;">ขอบคุณที่ใช้บริการระบบจองห้องประชุม</p>
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="font-size: 12px; color: #888; text-align: center;">อีเมลฉบับนี้ส่งจากระบบอัตโนมัติ กรุณาอย่าตอบกลับ</p>
+          </div>
+        </div>
+      `;
+    }
+
+    if (subject && htmlBody) {
+      MailApp.sendEmail({
+        to: userEmail,
+        subject: subject,
+        htmlBody: htmlBody,
+        name: "ระบบจองห้องประชุม"
+      });
+    }
+  } catch (error) {
+    console.error("Error sending email: " + error.message);
+  }
+}
+
+// -----------------------------------------------------------------
+// 📱 EXTERNAL NOTIFICATION SYSTEM (ระบบส่งแจ้งเตือน Webhook & LINE)
+// -----------------------------------------------------------------
+function sendLineNotification(bookingId, formData) {
+  try {
+    // จัดรูปแบบวันที่ให้อ่านง่าย วัน/เดือน/ปี
+    let dateStr = formData.date;
+    if (dateStr.includes('-')) {
+      const parts = dateStr.split('-');
+      dateStr = `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+
+    // 📝 จัดรูปแบบข้อความส่งแจ้งเตือน
+    const message = 
+      "\n📌 มีคำขอจองห้องประชุมใหม่!\n" +
+      "━━━━━━━━━━━━━━━━━━━━\n" +
+      "🔹 รหัสการจอง: " + bookingId + "\n" +
+      "🔹 ผู้ขอจอง: " + formData.name + " (" + formData.department + ")\n" +
+      "🔹 ห้องประชุม: " + formData.room + "\n" +
+      "🔹 วันที่จอง: " + dateStr + "\n" +
+      "🔹 เวลา: " + formData.startTime + " - " + formData.endTime + " น.\n" +
+      "🔹 วัตถุประสงค์: " + formData.purpose + "\n" +
+      "━━━━━━━━━━━━━━━━━━━━\n" +
+      "สถานะ: ⏳ รอดำเนินการอนุมัติ"+"\n"+
+      "https://nitikornser-commits.github.io/webapp/";
+
+    // 🌟 ส่วนที่ 1: ส่งข้อมูลเข้า Webhook URL (webhook.site)
+    const webhookUrl = "https://webhook.site/be60be32-e455-4352-b066-30a77edf4521";
+    UrlFetchApp.fetch(webhookUrl, {
+      method: "post",
+      contentType: "application/json",
+      payload: JSON.stringify({
+        status: "success",
+        event: "NEW_BOOKING",
+        bookingId: bookingId,
+        textMessage: message,
+        rawDetails: formData
+      }),
+      muteHttpExceptions: true
+    });
+
+    // 🌟 ส่วนที่ 2: ส่งข้อมูลเข้ากลุ่ม LINE ด้วย Messaging API Token และ Group ID ของคุณ
+    const channelAccessToken = "M9/mhZyJNpvtPqmpQzVuk8vwOiOjeLFknIyAN6CiVXKu6LiLvL4WFpoqpv1PHHvmLlMPq8pR+55uqYYKUcUwJ7gR3MZFKeAKFtOxnrxelAYGS0Ij+NUC/v6P/eyf8JxPS0GXmxXSAT1+INE6IZZHeQdB04t89/1O/w1cDnyilFU=";
+    const targetGroupId = "Ca6a932fa3de6ee4b6f208787c6c6a668"; // ผูก Group ID ของคุณเรียบร้อย
+
+    if (targetGroupId) {
+      sendToLineBot(channelAccessToken, targetGroupId, message);
+    }
+
+  } catch (error) {
+    console.error("Notification System Error: " + error.message);
+  }
+}
+
+// ฟังก์ชันภายในสำหรับส่งข้อมูลผ่าน LINE Messaging API Push Message
+function sendToLineBot(token, toId, text) {
+  const url = "https://api.line.me/v2/bot/message/push";
+  const payload = {
+    to: toId,
+    messages: [{ type: "text", text: text }]
+  };
+  UrlFetchApp.fetch(url, {
+    method: "post",
+    headers: {
+      "Authorization": "Bearer " + token,
+      "Content-Type": "application/json"
+    },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  });
+}
+
+// -----------------------------------------------------------------
+// 📱 LINE NOTIFICATION เมื่อสถานะการจองเปลี่ยน (อนุมัติ / ไม่อนุมัติ)
+// -----------------------------------------------------------------
+function sendLineStatusNotification(data) {
+  try {
+    var dateStr = data.date;
+    if (dateStr instanceof Date) {
+      dateStr = Utilities.formatDate(dateStr, Session.getScriptTimeZone(), "dd/MM/yyyy");
+    } else if (String(dateStr).indexOf("-") !== -1) {
+      var parts = String(dateStr).split("-");
+      dateStr = parts[2] + "/" + parts[1] + "/" + parts[0];
+    }
+
+    var statusIcon = data.status === "อนุมัติ" ? "✅" : "❌";
+    var message = "\n" + statusIcon + " อัปเดตสถานะการจองห้องประชุม\n"
+      + "━━━━━━━━━━━━━━━━━━━━\n"
+      + "🔹 รหัสการจอง: " + data.bookingId + "\n"
+      + "🔹 ผู้จอง: " + data.name + "\n"
+      + "🔹 ห้องประชุม: " + data.room + "\n"
+      + "🔹 วันที่: " + dateStr + "\n"
+      + "🔹 เวลา: " + data.startTime + " - " + data.endTime + " น.\n"
+      + "━━━━━━━━━━━━━━━━━━━━\n"
+      + "สถานะใหม่: " + statusIcon + " " + data.status + "\n"
+      + "https://nitikornser-commits.github.io/webapp/";
+
+    var channelAccessToken = "M9/mhZyJNpvtPqmpQzVuk8vwOiOjeLFknIyAN6CiVXKu6LiLvL4WFpoqpv1PHHvmLlMPq8pR+55uqYYKUcUwJ7gR3MZFKeAKFtOxnrxelAYGS0Ij+NUC/v6P/eyf8JxPS0GXmxXSAT1+INE6IZZHeQdB04t89/1O/w1cDnyilFU=";
+    var targetGroupId = "Ca6a932fa3de6ee4b6f208787c6c6a668";
+
+    var webhookUrl = "https://webhook.site/be60be32-e455-4352-b066-30a77edf4521";
+    UrlFetchApp.fetch(webhookUrl, {
+      method: "post",
+      contentType: "application/json",
+      payload: JSON.stringify({
+        status: "success",
+        event: "STATUS_UPDATE",
+        bookingId: data.bookingId,
+        newStatus: data.status,
+        textMessage: message,
+        rawDetails: data
+      }),
+      muteHttpExceptions: true
+    });
+
+    if (targetGroupId) {
+      sendToLineBot(channelAccessToken, targetGroupId, message);
+    }
+  } catch (error) {
+    console.error("LINE Status Notification Error: " + error.message);
+  }
+}
