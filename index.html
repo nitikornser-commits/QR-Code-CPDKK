@@ -377,6 +377,40 @@
   </div>
 
   <script>
+    // ===== ตั้งค่า GAS Web App URL (แก้ไขหลัง Deploy Code.gs) =====
+    const GAS_API_URL = 'YOUR_GAS_WEB_APP_URL_HERE';
+    // =========================================================
+
+    // ===== callAPI: ส่ง request ไปยัง GAS (ใช้ทั้ง GitHub Pages และ GAS โดยตรง) =====
+    async function callAPI(action, payload) {
+      // ถ้าอยู่ใน GAS ให้ใช้ google.script.run ตรง ๆ (เร็วกว่า)
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        return new Promise((resolve, reject) => {
+          const gasActions = {
+            verifyPassword:      (cb) => google.script.run.withSuccessHandler(cb).withFailureHandler(reject).verifySystemPassword(payload.password),
+            getBookings:         (cb) => google.script.run.withSuccessHandler(r => cb({ success: true, data: r })).withFailureHandler(reject).getBookings(),
+            submitBooking:       (cb) => google.script.run.withSuccessHandler(cb).withFailureHandler(reject).submitBooking(payload.formData),
+            updateBookingStatus: (cb) => google.script.run.withSuccessHandler(cb).withFailureHandler(reject).updateBookingStatus(payload.id, payload.newStatus, payload.sessionKey),
+            deleteBooking:       (cb) => google.script.run.withSuccessHandler(cb).withFailureHandler(reject).deleteBookingRecord(payload.id, payload.sessionKey),
+            editBooking:         (cb) => google.script.run.withSuccessHandler(cb).withFailureHandler(reject).editBookingRecord(payload.id, payload.formData, payload.sessionKey),
+            getViewCount:        (cb) => google.script.run.withSuccessHandler(count => cb({ success: true, count: count })).withFailureHandler(reject).incrementAndGetViewCount(),
+          };
+          if (gasActions[action]) gasActions[action](resolve);
+          else reject(new Error('Unknown action: ' + action));
+        });
+      }
+      // ถ้าอยู่บน GitHub Pages ให้ fetch ไปยัง GAS Web App
+      if (!GAS_API_URL || GAS_API_URL === 'YOUR_GAS_WEB_APP_URL_HERE') {
+        throw new Error('กรุณาตั้งค่า GAS_API_URL ในไฟล์ index.html ก่อนใช้งาน');
+      }
+      const res = await fetch(GAS_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action, ...payload })
+      });
+      return await res.json();
+    }
+
     Chart.register(ChartDataLabels);
     let calendar;
     let datePicker; 
@@ -390,50 +424,25 @@
     let chartInstanceStatus = null;
     let chartInstanceDept = null;
 
-    // ===== กำหนดรหัสผ่านสำหรับ GitHub Pages (กรณีไม่มี Google Apps Script) =====
-    const LOCAL_ADMIN_PASSWORD = 'admin1234';  // <-- เปลี่ยนรหัสผู้ดูแลระบบได้ที่นี่
-    const LOCAL_USER_PASSWORD  = 'user1234';   // <-- เปลี่ยนรหัสผู้ใช้งานทั่วไปได้ที่นี่
-    // =========================================================================
-
-    function checkSecureLogin() {
+    async function checkSecureLogin() {
       const pwd = document.getElementById('systemPassword').value;
       const loginBtn = document.getElementById('loginBtn');
       loginBtn.disabled = true;
       loginBtn.innerText = 'กำลังตรวจสอบ...';
-
-      // ตรวจสอบว่าทำงานบน Google Apps Script หรือไม่
-      if (typeof google !== 'undefined' && google.script && google.script.run) {
-        // === โหมด Google Apps Script (ปกติ) ===
-        google.script.run
-          .withSuccessHandler(res => {
-            loginBtn.disabled = false; loginBtn.innerText = 'เข้าสู่ระบบ';
-            if (res.success) {
-              currentRole = res.role; runtimeSessionKey = pwd;
-              unlockSystem();
-            } else {
-              Swal.fire({ icon: 'error', title: 'การเข้าถึงล้มเหลว', text: res.message });
-              document.getElementById('systemPassword').value = '';
-            }
-          })
-          .withFailureHandler(err => {
-            loginBtn.disabled = false; loginBtn.innerText = 'เข้าสู่ระบบ';
-            Swal.fire('Error', err.message, 'error');
-          }).verifySystemPassword(pwd);
-      } else {
-        // === โหมด GitHub Pages / Static Hosting (ใช้รหัสผ่านแบบ Local) ===
-        setTimeout(() => {
-          loginBtn.disabled = false; loginBtn.innerText = 'เข้าสู่ระบบ';
-          if (pwd === LOCAL_ADMIN_PASSWORD) {
-            currentRole = 'admin'; runtimeSessionKey = pwd;
-            unlockSystem();
-          } else if (pwd === LOCAL_USER_PASSWORD) {
-            currentRole = 'user'; runtimeSessionKey = pwd;
-            unlockSystem();
-          } else {
-            Swal.fire({ icon: 'error', title: 'การเข้าถึงล้มเหลว', text: 'รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง' });
-            document.getElementById('systemPassword').value = '';
-          }
-        }, 400);
+      try {
+        const res = await callAPI('verifyPassword', { password: pwd });
+        loginBtn.disabled = false; loginBtn.innerText = 'เข้าสู่ระบบ';
+        if (res.success) {
+          currentRole = res.role; runtimeSessionKey = pwd;
+          unlockSystem();
+        } else {
+          Swal.fire({ icon: 'error', title: 'การเข้าถึงล้มเหลว', text: res.message });
+          document.getElementById('systemPassword').value = '';
+        }
+      } catch (err) {
+        loginBtn.disabled = false; loginBtn.innerText = 'เข้าสู่ระบบ';
+        Swal.fire({ icon: 'error', title: 'เชื่อมต่อไม่ได้', text: err.message });
+        document.getElementById('systemPassword').value = '';
       }
     }
 
@@ -527,22 +536,12 @@
       calendar.render();
     }
 
-    // ===== Helper: บันทึก/โหลดข้อมูลจอง (สำหรับ GitHub Pages) =====
-    function ghSaveBookings(bookings) {
-      try { localStorage.setItem('gh_bookings', JSON.stringify(bookings)); } catch(e) {}
-    }
-    function ghLoadBookings() {
-      try { const s = localStorage.getItem('gh_bookings'); return s ? JSON.parse(s) : []; } catch(e) { return []; }
-    }
-    function ghNextId() {
-      return 'BK' + Date.now();
-    }
-
-    function fetchAndRenderEvents() {
+    async function fetchAndRenderEvents() {
       if (!calendar) return;
       calendar.removeAllEvents();
-
-      function processBookings(bookings) {
+      try {
+        const res = await callAPI('getBookings', {});
+        const bookings = res.data || [];
         globalBookings = bookings;
         renderListView();
         if (currentRole === 'admin') { renderDashboard(bookings); }
@@ -557,12 +556,8 @@
             backgroundColor: color, borderColor: color, extendedProps: b
           });
         });
-      }
-
-      if (typeof google !== 'undefined' && google.script && google.script.run) {
-        google.script.run.withSuccessHandler(processBookings).getBookings();
-      } else {
-        processBookings(ghLoadBookings());
+      } catch (err) {
+        Swal.fire('เชื่อมต่อไม่ได้', err.message, 'error');
       }
     }
 
@@ -624,43 +619,31 @@
     }
 
     function inlineAdminAction(id, status) {
-      Swal.fire({ title: 'ยืนยัน?', text: `ต้องการเปลี่ยนสถานะเป็น "${status}" ใช่หรือไม่?`, icon: 'question', showCancelButton: true, confirmButtonColor: '#059669', confirmButtonText: 'บันทึกสถานะ'
-      }).then((r) => {
+      Swal.fire({ title: 'ยืนยัน?', text: `ต้องการเปลี่ยนสถานะเป็น "${status}" ใช่หรือไม่?`, icon: 'question',
+        showCancelButton: true, confirmButtonColor: '#059669', confirmButtonText: 'บันทึกสถานะ'
+      }).then(async (r) => {
         if (r.isConfirmed) {
           Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
-          if (typeof google !== 'undefined' && google.script && google.script.run) {
-            google.script.run.withSuccessHandler(res => {
-              if (res.success) { Swal.fire('สำเร็จ!', res.message, 'success'); fetchAndRenderEvents(); }
-              else Swal.fire('ล้มเหลว', res.message, 'error');
-            }).updateBookingStatus(id, status, runtimeSessionKey);
-          } else {
-            const bookings = ghLoadBookings();
-            const idx = bookings.findIndex(b => b.id === id);
-            if (idx !== -1) { bookings[idx].status = status; ghSaveBookings(bookings); }
-            Swal.fire('สำเร็จ!', `เปลี่ยนสถานะเป็น "${status}" เรียบร้อยแล้ว (โหมดตัวอย่าง)`, 'success');
-            fetchAndRenderEvents();
-          }
+          try {
+            const res = await callAPI('updateBookingStatus', { id, newStatus: status, sessionKey: runtimeSessionKey });
+            if (res.success) { Swal.fire('สำเร็จ!', res.message, 'success'); fetchAndRenderEvents(); }
+            else Swal.fire('ล้มเหลว', res.message, 'error');
+          } catch (err) { Swal.fire('เชื่อมต่อไม่ได้', err.message, 'error'); }
         }
       });
     }
 
     function inlineDeleteAction(id) {
-      Swal.fire({ title: 'ยืนยันลบ?', text: "ลบแล้วกู้คืนไม่ได้!", icon: 'warning', showCancelButton: true, confirmButtonColor: '#DC2626', confirmButtonText: 'ลบทิ้งถาวร'
-      }).then((r) => {
+      Swal.fire({ title: 'ยืนยันลบ?', text: "ลบแล้วกู้คืนไม่ได้!", icon: 'warning',
+        showCancelButton: true, confirmButtonColor: '#DC2626', confirmButtonText: 'ลบทิ้งถาวร'
+      }).then(async (r) => {
         if (r.isConfirmed) {
           Swal.fire({ title: 'กำลังลบ...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
-          if (typeof google !== 'undefined' && google.script && google.script.run) {
-            google.script.run.withSuccessHandler(res => {
-              if (res.success) { Swal.fire('สำเร็จ!', res.message, 'success'); fetchAndRenderEvents(); }
-              else Swal.fire('ล้มเหลว', res.message, 'error');
-            }).deleteBookingRecord(id, runtimeSessionKey);
-          } else {
-            let bookings = ghLoadBookings();
-            bookings = bookings.filter(b => b.id !== id);
-            ghSaveBookings(bookings);
-            Swal.fire('สำเร็จ!', 'ลบรายการเรียบร้อยแล้ว (โหมดตัวอย่าง)', 'success');
-            fetchAndRenderEvents();
-          }
+          try {
+            const res = await callAPI('deleteBooking', { id, sessionKey: runtimeSessionKey });
+            if (res.success) { Swal.fire('สำเร็จ!', res.message, 'success'); fetchAndRenderEvents(); }
+            else Swal.fire('ล้มเหลว', res.message, 'error');
+          } catch (err) { Swal.fire('เชื่อมต่อไม่ได้', err.message, 'error'); }
         }
       });
     }
@@ -945,51 +928,45 @@
       document.body.appendChild(link); link.click(); document.body.removeChild(link);
     }
 
-    function handleFormSubmit(e) {
+    async function handleFormSubmit(e) {
       e.preventDefault();
       const btn = document.getElementById('submitBtn'); btn.disabled = true;
-      const f = { 
-        name: document.getElementById('name').value, 
+      const f = {
+        name: document.getElementById('name').value,
         email: document.getElementById('email').value,
-        department: document.getElementById('department').value, 
-        room: document.getElementById('room').value, 
-        date: document.getElementById('date').value, 
-        startTime: document.getElementById('startTime').value, 
-        endTime: document.getElementById('endTime').value, 
-        purpose: document.getElementById('purpose').value, 
-        notes: document.getElementById('notes').value 
+        department: document.getElementById('department').value,
+        room: document.getElementById('room').value,
+        date: document.getElementById('date').value,
+        startTime: document.getElementById('startTime').value,
+        endTime: document.getElementById('endTime').value,
+        purpose: document.getElementById('purpose').value,
+        notes: document.getElementById('notes').value
       };
       if (currentRole !== 'admin') {
         const selectedDate = new Date(f.date);
-        const todayDate = new Date();
-        todayDate.setHours(0, 0, 0, 0); 
-
+        const todayDate = new Date(); todayDate.setHours(0, 0, 0, 0);
         if (selectedDate < todayDate) {
-           Swal.fire('ปฏิเสธการทำรายการ', 'ผู้ใช้งานทั่วไปไม่สามารถจองห้องประชุมวันที่ย้อนหลังได้ครับ', 'warning');
-           btn.disabled = false;
-           return; 
+          Swal.fire('ปฏิเสธการทำรายการ', 'ผู้ใช้งานทั่วไปไม่สามารถจองห้องประชุมวันที่ย้อนหลังได้ครับ', 'warning');
+          btn.disabled = false; return;
         }
       }
-
-      if (f.startTime >= f.endTime) { Swal.fire('ผิดพลาด', 'เวลาสิ้นสุดต้องมากกว่าเวลาเริ่ม', 'error');
+      if (f.startTime >= f.endTime) {
+        Swal.fire('ผิดพลาด', 'เวลาสิ้นสุดต้องมากกว่าเวลาเริ่ม', 'error');
         btn.disabled = false; return;
-      } 
-      if (typeof google !== 'undefined' && google.script && google.script.run) {
-        google.script.run.withSuccessHandler(res => {
-          btn.disabled = false;
-          if (res.success) { Swal.fire('สำเร็จ!', res.message, 'success'); document.getElementById('bookingForm').reset(); fetchAndRenderEvents(); }
-          else Swal.fire('ล้มเหลว', res.message, 'error');
-        }).submitBooking(f);
-      } else {
-        // โหมด GitHub Pages
-        const bookings = ghLoadBookings();
-        const newEntry = Object.assign({ id: ghNextId(), status: 'รอดำเนินการ' }, f);
-        bookings.push(newEntry);
-        ghSaveBookings(bookings);
+      }
+      try {
+        const res = await callAPI('submitBooking', { formData: f });
         btn.disabled = false;
-        Swal.fire('สำเร็จ!', 'ส่งคำขอจองเรียบร้อยแล้ว (โหมดตัวอย่าง)', 'success');
-        document.getElementById('bookingForm').reset();
-        fetchAndRenderEvents();
+        if (res.success) {
+          Swal.fire('สำเร็จ!', res.message, 'success');
+          document.getElementById('bookingForm').reset();
+          fetchAndRenderEvents();
+        } else {
+          Swal.fire('ล้มเหลว', res.message, 'error');
+        }
+      } catch (err) {
+        btn.disabled = false;
+        Swal.fire('เชื่อมต่อไม่ได้', err.message, 'error');
       }
     }
 
@@ -1036,81 +1013,63 @@
       if (currentRole === 'admin') document.getElementById('adminActionSection').classList.toggle('hidden', isEdit);
     }
 
-    function saveBookingEdit() {
+    async function saveBookingEdit() {
       const id = document.getElementById('modalBookingId').value;
       const f = {
-        name: document.getElementById('editName').value.trim(), 
+        name: document.getElementById('editName').value.trim(),
         email: document.getElementById('editEmail').value.trim(),
-        department: document.getElementById('editDept').value, 
+        department: document.getElementById('editDept').value,
         room: document.getElementById('editRoom').value,
-        date: document.getElementById('editDate').value, 
-        startTime: document.getElementById('editStartTime').value, 
+        date: document.getElementById('editDate').value,
+        startTime: document.getElementById('editStartTime').value,
         endTime: document.getElementById('editEndTime').value,
-        purpose: document.getElementById('editPurpose').value.trim(), 
+        purpose: document.getElementById('editPurpose').value.trim(),
         notes: document.getElementById('editNotes').value.trim()
       };
-      if (!f.name || !f.email || !f.department || !f.room || !f.date || !f.startTime || !f.endTime || !f.purpose) { Swal.fire('ผิดพลาด', 'กรอกข้อมูล * ให้ครบถ้วน', 'warning');
-        return; }
-      if (f.startTime >= f.endTime) { Swal.fire('ผิดพลาด', 'เวลาไม่ถูกต้อง', 'error'); return;
+      if (!f.name || !f.email || !f.department || !f.room || !f.date || !f.startTime || !f.endTime || !f.purpose) {
+        Swal.fire('ผิดพลาด', 'กรอกข้อมูล * ให้ครบถ้วน', 'warning'); return;
       }
-
+      if (f.startTime >= f.endTime) { Swal.fire('ผิดพลาด', 'เวลาไม่ถูกต้อง', 'error'); return; }
       Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
-      if (typeof google !== 'undefined' && google.script && google.script.run) {
-        google.script.run
-          .withSuccessHandler(res => {
-            if (res.success) { Swal.fire('สำเร็จ', res.message, 'success'); closeModal(); fetchAndRenderEvents(); }
-            else Swal.fire('ล้มเหลว', res.message, 'error');
-          }).editBookingRecord(id, f, runtimeSessionKey);
-      } else {
-        // โหมด GitHub Pages
-        const bookings = ghLoadBookings();
-        const idx = bookings.findIndex(b => b.id === id);
-        if (idx !== -1) { bookings[idx] = Object.assign(bookings[idx], f); ghSaveBookings(bookings); }
-        Swal.fire('สำเร็จ', 'บันทึกการแก้ไขเรียบร้อยแล้ว (โหมดตัวอย่าง)', 'success');
-        closeModal(); fetchAndRenderEvents();
-      }
+      try {
+        const res = await callAPI('editBooking', { id, formData: f, sessionKey: runtimeSessionKey });
+        if (res.success) { Swal.fire('สำเร็จ', res.message, 'success'); closeModal(); fetchAndRenderEvents(); }
+        else Swal.fire('ล้มเหลว', res.message, 'error');
+      } catch (err) { Swal.fire('เชื่อมต่อไม่ได้', err.message, 'error'); }
     }
 
     function closeModal() { document.getElementById('detailModal').classList.add('hidden'); }
 
     function handleAdminAction(status) {
       const id = document.getElementById('modalBookingId').value;
-      Swal.fire({ title: 'ยืนยัน?', text: `เปลี่ยนสถานะเป็น "${status}" ใช่หรือไม่?`, icon: 'question', showCancelButton: true, confirmButtonColor: '#059669', confirmButtonText: 'บันทึก'
-      }).then((r) => {
+      Swal.fire({ title: 'ยืนยัน?', text: `เปลี่ยนสถานะเป็น "${status}" ใช่หรือไม่?`, icon: 'question',
+        showCancelButton: true, confirmButtonColor: '#059669', confirmButtonText: 'บันทึก'
+      }).then(async (r) => {
         if (r.isConfirmed) {
-          closeModal(); Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
-          if (typeof google !== 'undefined' && google.script && google.script.run) {
-            google.script.run.withSuccessHandler(res => {
-              if (res.success) { Swal.fire('สำเร็จ!', res.message, 'success'); fetchAndRenderEvents(); } else Swal.fire('ล้มเหลว', res.message, 'error');
-            }).updateBookingStatus(id, status, runtimeSessionKey);
-          } else {
-            const bookings = ghLoadBookings();
-            const idx = bookings.findIndex(b => b.id === id);
-            if (idx !== -1) { bookings[idx].status = status; ghSaveBookings(bookings); }
-            Swal.fire('สำเร็จ!', `เปลี่ยนสถานะเป็น "${status}" เรียบร้อยแล้ว (โหมดตัวอย่าง)`, 'success');
-            fetchAndRenderEvents();
-          }
+          closeModal();
+          Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+          try {
+            const res = await callAPI('updateBookingStatus', { id, newStatus: status, sessionKey: runtimeSessionKey });
+            if (res.success) { Swal.fire('สำเร็จ!', res.message, 'success'); fetchAndRenderEvents(); }
+            else Swal.fire('ล้มเหลว', res.message, 'error');
+          } catch (err) { Swal.fire('เชื่อมต่อไม่ได้', err.message, 'error'); }
         }
       });
     }
 
     function deleteBookingAction() {
       const id = document.getElementById('modalBookingId').value;
-      Swal.fire({ title: 'ยืนยันลบ?', text: "ลบแล้วกู้คืนไม่ได้!", icon: 'warning', showCancelButton: true, confirmButtonColor: '#DC2626', confirmButtonText: 'ลบเลย'
-      }).then((r) => {
+      Swal.fire({ title: 'ยืนยันลบ?', text: "ลบแล้วกู้คืนไม่ได้!", icon: 'warning',
+        showCancelButton: true, confirmButtonColor: '#DC2626', confirmButtonText: 'ลบเลย'
+      }).then(async (r) => {
         if (r.isConfirmed) {
-          closeModal(); Swal.fire({ title: 'กำลังลบ...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
-          if (typeof google !== 'undefined' && google.script && google.script.run) {
-            google.script.run.withSuccessHandler(res => {
-              if (res.success) { Swal.fire('สำเร็จ!', res.message, 'success'); fetchAndRenderEvents(); } else Swal.fire('ล้มเหลว', res.message, 'error');
-            }).deleteBookingRecord(id, runtimeSessionKey);
-          } else {
-            let bookings = ghLoadBookings();
-            bookings = bookings.filter(b => b.id !== id);
-            ghSaveBookings(bookings);
-            Swal.fire('สำเร็จ!', 'ลบรายการเรียบร้อยแล้ว (โหมดตัวอย่าง)', 'success');
-            fetchAndRenderEvents();
-          }
+          closeModal();
+          Swal.fire({ title: 'กำลังลบ...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+          try {
+            const res = await callAPI('deleteBooking', { id, sessionKey: runtimeSessionKey });
+            if (res.success) { Swal.fire('สำเร็จ!', res.message, 'success'); fetchAndRenderEvents(); }
+            else Swal.fire('ล้มเหลว', res.message, 'error');
+          } catch (err) { Swal.fire('เชื่อมต่อไม่ได้', err.message, 'error'); }
         }
       });
     }
@@ -1144,26 +1103,12 @@
 
       datePicker = flatpickr("#date", flatpickrConfig);
       editDatePicker = flatpickr("#editDate", flatpickrConfig);
-      if (typeof google !== 'undefined' && google.script && google.script.run) {
-        google.script.run
-          .withSuccessHandler(function(count) {
-            const wrapper = document.getElementById('viewCountWrapper');
-            const display = document.getElementById('viewCountDisplay');
-            if (count !== null) {
-              display.innerText = count.toLocaleString() + ' ครั้ง';
-              wrapper.classList.remove('opacity-0');
-            }
-          })
-          .incrementAndGetViewCount();
-      } else {
-        // โหมด GitHub Pages — นับ view จาก localStorage
-        try {
-          let vc = parseInt(localStorage.getItem('gh_viewcount') || '0') + 1;
-          localStorage.setItem('gh_viewcount', vc);
-          document.getElementById('viewCountDisplay').innerText = vc.toLocaleString() + ' ครั้ง';
+      callAPI('getViewCount', {}).then(res => {
+        if (res && res.count != null) {
+          document.getElementById('viewCountDisplay').innerText = res.count.toLocaleString() + ' ครั้ง';
           document.getElementById('viewCountWrapper').classList.remove('opacity-0');
-        } catch(e) {}
-      }
+        }
+      }).catch(() => {});
     });
   </script>
 </body>
