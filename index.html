@@ -378,7 +378,7 @@
 
   <script>
     // ===== ตั้งค่า GAS Web App URL (แก้ไขหลัง Deploy Code.gs) =====
-    const GAS_API_URL = 'YOUR_GAS_WEB_APP_URL_HERE';
+    const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwZwxwutkMJVpDvyg8nkZ4wjJS4IrAh4YreRs5NjFmAgNvZNA-HyLnBweCkNhDbosXe/exec';
     // =========================================================
 
     // ===== callAPI: ส่ง request ไปยัง GAS (ใช้ทั้ง GitHub Pages และ GAS โดยตรง) =====
@@ -400,7 +400,7 @@
         });
       }
       // ถ้าอยู่บน GitHub Pages ให้ fetch ไปยัง GAS Web App
-      if (!GAS_API_URL || GAS_API_URL === 'YOUR_GAS_WEB_APP_URL_HERE') {
+      if (!GAS_API_URL || GAS_API_URL === 'https://script.google.com/macros/s/AKfycbwZwxwutkMJVpDvyg8nkZ4wjJS4IrAh4YreRs5NjFmAgNvZNA-HyLnBweCkNhDbosXe/exec') {
         throw new Error('กรุณาตั้งค่า GAS_API_URL ในไฟล์ index.html ก่อนใช้งาน');
       }
       const res = await fetch(GAS_API_URL, {
